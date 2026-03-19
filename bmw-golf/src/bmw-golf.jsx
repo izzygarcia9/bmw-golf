@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 const SUPABASE_URL      = 'https://cxnwtgytuapcmqzldfyp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4bnd0Z3l0dWFwY21xemxkZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4OTExOTQsImV4cCI6MjA4OTQ2NzE5NH0.w-bs6xIqsP1WER0zQq4UxZMJYuanCo8Sktdt0D4T5aU';
 
+
 const ALAMO_COURSES = [
   { name:'Olmos Basin',       rating:69.4, slope:125, par:72, yardage:'6,026 yds' },
   { name:'Brackenridge Park', rating:67.7, slope:124, par:71, yardage:'5,807 yds' },
@@ -244,6 +245,7 @@ export default function App() {
   const [adminMode,setAdmin]=useState(false);
   const [showPwBox,setShowPwBox]=useState(false);
   const [adminPw,setAdminPw]=useState('');
+  const adminPwRef=useRef('');
   const ADMIN_PW='bmw2024';
 
   const [players,setPlayers]=useState([]);
@@ -560,12 +562,12 @@ export default function App() {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <Card style={{padding:28,minWidth:280,border:`1px solid ${C.border}`}}>
             <div style={{color:C.green,fontWeight:700,marginBottom:12}}>🔒 Admin Password</div>
-            <input type="password" value={adminPw} onChange={e=>setAdminPw(e.target.value)} placeholder="Password"
-              onKeyDown={e=>{if(e.key==='Enter'){if(adminPw===ADMIN_PW){setAdmin(true);setShowPwBox(false);setAdminPw('');}else setErr('Wrong password');}}}
+            <input type="password" onChange={e=>{adminPwRef.current=e.target.value;}} placeholder="Password"
+              onKeyDown={e=>{if(e.key==='Enter'){if(adminPwRef.current===ADMIN_PW){setAdmin(true);setShowPwBox(false);adminPwRef.current='';}else setErr('Wrong password');}}}
               style={{width:'100%',border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 12px',fontSize:'0.9rem',marginBottom:10}}/>
             <div style={{display:'flex',gap:8}}>
-              <Btn onClick={()=>{if(adminPw===ADMIN_PW){setAdmin(true);setShowPwBox(false);setAdminPw('');}else setErr('Wrong password');}}>Unlock</Btn>
-              <Btn outline onClick={()=>{setShowPwBox(false);setAdminPw('');}}>Cancel</Btn>
+              <Btn onClick={()=>{if(adminPwRef.current===ADMIN_PW){setAdmin(true);setShowPwBox(false);adminPwRef.current='';}else setErr('Wrong password');}}>Unlock</Btn>
+              <Btn outline onClick={()=>{setShowPwBox(false);adminPwRef.current='';}}>Cancel</Btn>
             </div>
           </Card>
         </div>
