@@ -1280,7 +1280,7 @@ export default function App() {
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
                   <div>
                     <label style={{display:'block',color:C.muted,fontSize:'0.72rem',marginBottom:4}}>Date</label>
-                    <input value={newRound.date} onChange={e=>setNewRound(nr=>({...nr,date:e.target.value}))} placeholder="May 25, 2025"
+                    <input defaultValue={newRound.date} onBlur={e=>setNewRound(nr=>({...nr,date:e.target.value}))} placeholder="May 25, 2025"
                       style={{width:'100%',border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
                   </div>
                   <div>
@@ -1420,12 +1420,12 @@ export default function App() {
                       <div style={{padding:16,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
                         <div>
                           <label style={{display:'block',color:C.muted,fontSize:'0.72rem',marginBottom:4}}>Buy-In ($)</label>
-                          <input type="number" value={cfg.buy_in||25} onChange={e=>setC('buy_in',Number(e.target.value))}
+                          <input type="number" defaultValue={cfg.buy_in||25} onBlur={e=>setC('buy_in',Number(e.target.value))}
                             style={{width:'100%',border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
                         </div>
                         <div>
                           <label style={{display:'block',color:C.muted,fontSize:'0.72rem',marginBottom:4}}>Super Skin Fee ($)</label>
-                          <input type="number" value={cfg.super_skin_fee||10} onChange={e=>setC('super_skin_fee',Number(e.target.value))}
+                          <input type="number" defaultValue={cfg.super_skin_fee||10} onBlur={e=>setC('super_skin_fee',Number(e.target.value))}
                             style={{width:'100%',border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
                         </div>
                         <div>
@@ -1439,7 +1439,7 @@ export default function App() {
                         {[{label:'% CTP',k:'pct_ctp'},{label:'% Low Net',k:'pct_low_net'},{label:'% Skins',k:'pct_skins'},{label:'% 2MBD',k:'pct_2mbd'}].map(f=>(
                           <div key={f.k}>
                             <label style={{display:'block',color:C.muted,fontSize:'0.72rem',marginBottom:4}}>{f.label}</label>
-                            <input type="number" value={cfg[f.k]||0} min="0" max="100" onChange={e=>setC(f.k,Number(e.target.value))}
+                            <input type="number" defaultValue={cfg[f.k]||0} min="0" max="100" onBlur={e=>setC(f.k,Number(e.target.value))}
                               style={{width:'100%',border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
                           </div>
                         ))}
@@ -1484,10 +1484,10 @@ export default function App() {
             <Card style={{marginBottom:14}}>
               <CardHead>Add Player</CardHead>
               <div style={{padding:14,display:'flex',gap:10,flexWrap:'wrap'}}>
-                <input value={addPlayerName} onChange={e=>setAddPlayerName(e.target.value)} placeholder="Full name"
+                <input defaultValue={addPlayerName} onBlur={e=>setAddPlayerName(e.target.value)} placeholder="Full name"
                   onKeyDown={e=>e.key==='Enter'&&addPlayer()}
                   style={{flex:2,minWidth:160,border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
-                <input type="number" value={addPlayerHc} onChange={e=>setAddPlayerHc(e.target.value)} placeholder="HC"
+                <input type="number" defaultValue={addPlayerHc} onBlur={e=>setAddPlayerHc(e.target.value)} placeholder="HC"
                   onKeyDown={e=>e.key==='Enter'&&addPlayer()}
                   style={{flex:1,minWidth:70,border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
                 <Btn onClick={addPlayer} disabled={saving}>Add</Btn>
