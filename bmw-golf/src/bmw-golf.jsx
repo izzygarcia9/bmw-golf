@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 // ╔══════════════════════════════════════════════════════╗
 //  Replace with your Supabase credentials
 // ╚══════════════════════════════════════════════════════╝
-const SUPABASE_URL      = 'https://xwgzjfxippkxswgouobf.supabase.co';
+const SUPABASE_URL      = 'https://cxnwtgytuapcmqzldfyp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4bnd0Z3l0dWFwY21xemxkZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4OTExOTQsImV4cCI6MjA4OTQ2NzE5NH0.w-bs6xIqsP1WER0zQq4UxZMJYuanCo8Sktdt0D4T5aU';
 
 // ── ALAMO CITY GOLF TRAIL — White Tees (Men) ────────────
