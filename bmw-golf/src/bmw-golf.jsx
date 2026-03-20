@@ -4,13 +4,27 @@ const SUPABASE_URL      = 'https://cxnwtgytuapcmqzldfyp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4bnd0Z3l0dWFwY21xemxkZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4OTExOTQsImV4cCI6MjA4OTQ2NzE5NH0.w-bs6xIqsP1WER0zQq4UxZMJYuanCo8Sktdt0D4T5aU';
 
 const ALAMO_COURSES = [
-  { name:'Olmos Basin',       rating:69.4, slope:125, par:72, yardage:'6,026 yds' },
-  { name:'Brackenridge Park', rating:67.7, slope:124, par:71, yardage:'5,807 yds' },
-  { name:'Cedar Creek',       rating:73.4, slope:139, par:72, yardage:'6,660 yds' },
-  { name:'Mission Del Lago',  rating:71.0, slope:128, par:72, yardage:'6,378 yds' },
-  { name:'Northern Hills',    rating:70.1, slope:121, par:72, yardage:'6,193 yds' },
-  { name:'Riverside',         rating:69.3, slope:117, par:72, yardage:'5,892 yds' },
-  { name:'Willow Springs',    rating:72.4, slope:127, par:72, yardage:'6,529 yds' },
+  { name:'Olmos Basin',       rating:69.4, slope:125, par:72, yardage:'6,026 yds',
+    holes_par:[4,4,3,4,5,3,4,4,5,4,4,3,4,4,4,4,4,5],
+    hdcp:[7,3,9,1,11,17,5,13,15,4,12,10,8,18,2,14,6,16] },
+  { name:'Brackenridge Park', rating:67.7, slope:124, par:71, yardage:'5,807 yds',
+    holes_par:[4,3,5,4,4,4,4,3,5,3,4,5,5,4,3,4,4,3],
+    hdcp:[15,3,13,9,7,1,5,11,17,8,4,10,14,2,18,12,16,6] },
+  { name:'Cedar Creek',       rating:73.4, slope:139, par:72, yardage:'6,660 yds',
+    holes_par:[4,4,4,5,3,4,3,4,5,4,4,4,4,5,4,4,3,4],
+    hdcp:[13,3,9,17,15,1,7,5,11,12,16,2,6,18,14,10,8,4] },
+  { name:'Mission Del Lago',  rating:71.0, slope:128, par:72, yardage:'6,378 yds',
+    holes_par:[4,5,4,4,3,4,4,3,5,4,5,3,4,4,5,3,4,4],
+    hdcp:[7,11,1,9,15,5,3,13,17,4,18,16,8,2,14,12,10,6] },
+  { name:'Northern Hills',    rating:70.1, slope:121, par:72, yardage:'6,193 yds',
+    holes_par:[5,4,4,3,4,5,4,4,3,5,4,4,4,3,4,4,5,3],
+    hdcp:[5,17,15,9,1,7,3,13,11,16,12,6,8,14,2,10,18,4] },
+  { name:'Riverside',         rating:69.3, slope:117, par:72, yardage:'5,892 yds',
+    holes_par:[5,4,3,4,4,4,3,4,5,4,4,5,4,4,3,4,4,4],
+    hdcp:[15,5,13,1,11,7,9,3,17,16,4,14,8,2,10,6,18,12] },
+  { name:'Willow Springs',    rating:72.4, slope:127, par:72, yardage:'6,529 yds',
+    holes_par:[4,5,4,3,4,5,4,3,4,5,3,5,4,4,4,4,4,3],
+    hdcp:[9,7,1,15,5,17,3,11,13,16,18,6,10,2,14,4,8,12] },
 ];
 
 const sumArr = a => a.reduce((x,y)=>x+y,0);
@@ -90,11 +104,26 @@ const computeBestBall = (scores,pair,par) => {
 const calcPayouts = (config,scores,ctp,pairings,hcMap,par,parTotal) => {
   if(!config) return null;
   const {buy_in,super_skin_fee,pct_ctp,pct_low_net,pct_skins,pct_2mbd,
-         flight_a,flight_b,flight_c,super_skin_players,odd_player,num_flights} = config;
-  const flights = num_flights===2
+         flight_a,flight_b,flight_c,num_flights,
+         skins_a,skins_b,
+         mbd_a,mbd_b,oh_shit_player,
+         super_skin_players,odd_player} = config;
+
+  // ── Low Net flights (A/B/C depending on num_flights) ──────
+  const lowNetFlights = num_flights===2
     ? [{k:'A',p:flight_a||[]},{k:'B',p:flight_b||[]}]
     : [{k:'A',p:flight_a||[]},{k:'B',p:flight_b||[]},{k:'C',p:flight_c||[]}];
-  const allFlighted = flights.flatMap(f=>f.p);
+
+  // ── Skins flights (always A & B only) ─────────────────────
+  const skinsFlights = [
+    {k:'A',p:skins_a||flight_a||[]},
+    {k:'B',p:skins_b||flight_b||[]},
+  ];
+
+  // ── 2MBD flights (always A & B only) ─────────────────────
+  const mbdPlayers = [...(mbd_a||flight_a||[]),...(mbd_b||flight_b||[])];
+
+  const allFlighted = lowNetFlights.flatMap(f=>f.p);
   const fieldSize = allFlighted.length;
   if(!fieldSize) return null;
 
@@ -105,27 +134,29 @@ const calcPayouts = (config,scores,ctp,pairings,hcMap,par,parTotal) => {
   const twoMbdPot    = totalPot*pct_2mbd/100;
   const superSkinPot = (super_skin_players||[]).length*(super_skin_fee||10);
   const ctpPerHole   = ctpPot/3;
-  const numF         = flights.length;
 
+  // ── Low Net ────────────────────────────────────────────────
   const flightLowNet = {};
-  flights.forEach(({k,p})=>{
-    const fp = lowNetPot/numF;
+  lowNetFlights.forEach(({k,p})=>{
+    const fp = lowNetPot/lowNetFlights.length;
     const lb = p.filter(n=>scores[n]&&sumArr(scores[n])>0)
       .map(n=>({name:n,net:sumArr(scores[n].map((s,i)=>s>0?s:par[i]))-(hcMap[n]??0),gross:sumArr(scores[n].map((s,i)=>s>0?s:par[i]))}))
       .sort((a,b)=>a.net-b.net);
     flightLowNet[k]={pot:fp,places:lb.slice(0,3).map((pl,i)=>({...pl,payout:fp*[0.5,0.3,0.2][i]}))};
   });
 
+  // ── Skins (A & B only, 2 flights always) ──────────────────
   const flightSkins = {};
-  flights.forEach(({k,p})=>{
-    const fp = skinsPot/numF;
+  skinsFlights.forEach(({k,p})=>{
+    const fp = skinsPot/2;
     const active = p.filter(n=>scores[n]);
     const {skins,holes,totalCarry} = computeSkins(scores,active,par);
     const winners = Object.entries(skins).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]);
     const total = Object.values(skins).reduce((a,b)=>a+b,0)||1;
-    flightSkins[k]={pot:fp,winners:winners.map(([name,count])=>({name,count,payout:fp*(count/total)})),holes,totalCarry,perSkin:fp/total};
+    flightSkins[k]={pot:fp,players:p,winners:winners.map(([name,count])=>({name,count,payout:fp*(count/total)})),holes,totalCarry,perSkin:fp/total};
   });
 
+  // ── Super Skins ────────────────────────────────────────────
   const ssp = (super_skin_players||[]).filter(p=>scores[p]);
   const {skins:sSkins,holes:ssHoles,totalCarry:ssTotalCarry} = computeSkins(scores,ssp,par);
   const ssTot = Object.values(sSkins).reduce((a,b)=>a+b,0)||1;
@@ -135,18 +166,26 @@ const calcPayouts = (config,scores,ctp,pairings,hcMap,par,parTotal) => {
     holes:ssHoles,totalCarry:ssTotalCarry,perSkin:superSkinPot/(ssTot),
   };
 
+  // ── 2MBD ──────────────────────────────────────────────────
   const teams=[];
   (pairings||[]).forEach(grp=>grp.forEach(pair=>{
     const bb=computeBestBall(scores,pair,par);
     if(bb){const t=sumArr(bb.map((s,i)=>s>0?s:par[i]));teams.push({pair,total:t,scores:bb});}
   }));
   teams.sort((a,b)=>a.total-b.total);
-  const twoMbd={pot:twoMbdPot,winner:teams[0]||null,runnerUp:teams[1]||null,payFirst:twoMbdPot*0.6,paySecond:twoMbdPot*0.4};
+  const twoMbd={
+    pot:twoMbdPot,
+    winner:teams[0]||null,runnerUp:teams[1]||null,
+    payFirst:twoMbdPot*0.6,paySecond:twoMbdPot*0.4,
+    ohShitPlayer:oh_shit_player||null,
+    mbdPlayers,
+  };
 
   return {totalPot,ctpPot,lowNetPot,skinsPot,twoMbdPot,superSkinPot,ctpPerHole,
-          flightLowNet,flightSkins,superSkins,twoMbd,fieldSize,oddPlayer:odd_player,
-          breakdown:{ctp:pct_ctp,lowNet:pct_low_net,skins:pct_skins,twoMbd:pct_2mbd},
-          flights};
+          flightLowNet,flightSkins,superSkins,twoMbd,fieldSize,
+          oddPlayer:odd_player,
+          lowNetFlights,skinsFlights,
+          breakdown:{ctp:pct_ctp,lowNet:pct_low_net,skins:pct_skins,twoMbd:pct_2mbd}};
 };
 
 const assembleRound = (r,scores,ctps,pairings,configs,courses) => {
@@ -159,24 +198,47 @@ const assembleRound = (r,scores,ctps,pairings,configs,courses) => {
   const groups=pairStruct.map(g=>g.flat().filter(Boolean));
   const cfg=configs.find(c=>c.round_id===r.id)||null;
   const course=courses.find(c=>c.id===r.course_id)||null;
-  const par=course?.holes_par||[4,4,3,4,5,3,4,4,5,4,4,3,4,4,4,4,4,5];
-  return {id:r.id,date:r.date,course,par,parTotal:sumArr(par),scores:scoresMap,groups,pairings:pairStruct,ctp:ctpObj,config:cfg,status:r.status||'live'};
+  // Use ALAMO_COURSES par if available for accuracy
+  const alamoCourse = ALAMO_COURSES.find(a=>a.name===course?.name);
+  const par = alamoCourse?.holes_par || course?.holes_par || [4,4,3,4,5,3,4,4,5,4,4,3,4,4,4,4,4,5];
+  const hdcp = alamoCourse?.hdcp || null;
+  return {id:r.id,date:r.date,course,par,parTotal:sumArr(par),hdcp,scores:scoresMap,groups,pairings:pairStruct,ctp:ctpObj,config:cfg,status:r.status||'live'};
 };
 
-const drawPairings = (flightA,flightB,flightC,numFlights) => {
-  // Strictly pair A players with B or C players only — never A+A or B+B or C+C
+// ── GHIN HANDICAP CALCULATION ────────────────────────────
+// Uses USGA World Handicap System: Score Differential = (Adjusted Gross - Course Rating) x 113 / Slope
+const calcScoreDifferential = (grossScore, courseRating, slope) =>
+  ((grossScore - courseRating) * 113 / slope);
+
+const calcGHINHandicap = (differentials) => {
+  // Use best 8 of last 20 differentials (or best of available)
+  const sorted = [...differentials].sort((a,b)=>a-b);
+  const use = sorted.length >= 20 ? sorted.slice(0,8)
+    : sorted.length >= 10 ? sorted.slice(0,Math.ceil(sorted.length*0.4))
+    : sorted.length >= 6  ? sorted.slice(0,Math.ceil(sorted.length*0.4))
+    : sorted.slice(0,1);
+  if(!use.length) return null;
+  const avg = use.reduce((a,b)=>a+b,0)/use.length;
+  return Math.floor(avg * 0.96 * 10) / 10; // truncate to 1 decimal
+}; = (flightA,flightB,flightC,numFlights) => {
   const sA  = [...(flightA||[])].sort(()=>Math.random()-.5);
   const sBC = [...(flightB||[]),...(numFlights===3?(flightC||[]):[])].sort(()=>Math.random()-.5);
   const pairs = [];
+  // First: pair each A with one B/C
   const min = Math.min(sA.length, sBC.length);
-  // Each A gets matched with one B/C
   for(let i=0;i<min;i++) pairs.push([sA[i], sBC[i]]);
-  // Leftover players (if flights are uneven) get a solo slot — never paired same-flight
-  sA.slice(min).forEach(p=>pairs.push([p,'']));
-  sBC.slice(min).forEach(p=>pairs.push([p,'']));
-  // Group pairs into foursomes (2 pairs per group)
+  // Leftover A players — pair them together (A+A better than solo)
+  const remA = sA.slice(min);
+  for(let i=0;i<remA.length;i+=2)
+    pairs.push(remA[i+1] ? [remA[i],remA[i+1]] : [remA[i], sBC[sBC.length-1]||'']);
+  // Leftover B/C players — pair them together (B+C better than solo)
+  const remBC = sBC.slice(min);
+  for(let i=0;i<remBC.length;i+=2)
+    pairs.push(remBC[i+1] ? [remBC[i],remBC[i+1]] : [remBC[i], remA[remA.length-1]||'']);
+  // Group into foursomes (2 pairs per group)
   const groups=[];
-  for(let i=0;i<pairs.length;i+=2) groups.push(pairs[i+1]?[pairs[i],pairs[i+1]]:[pairs[i]]);
+  for(let i=0;i<pairs.length;i+=2)
+    groups.push(pairs[i+1] ? [pairs[i],pairs[i+1]] : [pairs[i]]);
   return groups;
 };
 
@@ -293,7 +355,11 @@ export default function App() {
   const [newRoundStep,setNewRoundStep]=useState(1);
   const [newRound,setNewRound]=useState({date:'',courseId:'',numFlights:3});
   const [selectedPlayers,setSelectedPlayers]=useState([]);
-  const [draftFlights,setDraftFlights]=useState({A:[],B:[],C:[]});
+  const [draftFlights,setDraftFlights]=useState({A:[],B:[],C:[]});       // Low Net flights
+  const [draftSkinsFlights,setDraftSkinsFlights]=useState({A:[],B:[]}); // Skins A/B
+  const [draftMbdFlights,setDraftMbdFlights]=useState({A:[],B:[]});     // 2MBD A/B
+  const [ohShitPlayer,setOhShitPlayer]=useState(null);                   // sits out 2MBD
+  const [draftGroups,setDraftGroups]=useState([]);                       // manual foursomes
   const [draftPairs,setDraftPairs]=useState([]);
   const [cfgEdit,setCfgEdit]=useState(null);
   const [addPlayerName,setAddPlayerName]=useState('');
@@ -422,25 +488,64 @@ export default function App() {
     setSaving(false);
   };
 
-  // ── NEW ROUND ────────────────────────────────────────────
+  // ── RESET SCORES ─────────────────────────────────────────
+  const resetScores = async()=>{
+    if(!round) return;
+    const pw = window.prompt('Enter admin password to reset all scores:');
+    if(pw!==ADMIN_PW){ setErr('Wrong password — scores not reset.'); return; }
+    if(!window.confirm(`Reset ALL scores for ${round.date} at ${round.course?.name}? This cannot be undone.`)) return;
+    setSaving(true);
+    try {
+      const playerNames = Object.keys(round.scores||{});
+      for(const name of playerNames){
+        await sb(`scores?round_id=eq.${round.id}&player_name=eq.${encodeURIComponent(name)}`,'PATCH',{holes:Array(18).fill(0)});
+      }
+      await loadAll(selRound);
+    } catch(e){ setErr('Reset failed: '+e.message); }
+    setSaving(false);
+  };
   const autoAssignFlights = (selected,numFlights) => {
     const sorted=[...selected].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0));
     const n=sorted.length;
+    // Low Net flights
+    let lowNet;
     if(numFlights===2){
       const half=Math.floor(n/2);
-      return {A:sorted.slice(0,half),B:sorted.slice(half),C:[]};
+      lowNet={A:sorted.slice(0,half),B:sorted.slice(half),C:[]};
+    } else {
+      const third=Math.floor(n/3);
+      const odd=n%3!==0?sorted[n-1]:null;
+      lowNet={
+        A:sorted.slice(0,third),
+        B:sorted.slice(third,third*2),
+        C:odd?sorted.slice(third*2).filter(p=>p!==odd):sorted.slice(third*2),
+      };
     }
-    const third=Math.floor(n/3);
-    const odd=n%3!==0?sorted[n-1]:null;
-    return {
-      A:sorted.slice(0,third),
-      B:sorted.slice(third,third*2),
-      C:odd?sorted.slice(third*2).filter(p=>p!==odd):sorted.slice(third*2),
-    };
+    // Skins & 2MBD always A/B even split
+    const half=Math.floor(n/2);
+    const skinsAndMbd={A:sorted.slice(0,half),B:sorted.slice(half)};
+    return {lowNet, skinsAndMbd};
   };
 
-  const generateDraw = (flights,numFlights) => {
-    return drawPairings(flights.A,flights.B,flights.C,numFlights);
+  // Oh Shit draw — randomly pick one player to sit out 2MBD when odd number
+  const doOhShitDraw = (allPlayers) => {
+    if(allPlayers.length%2===0){ setOhShitPlayer(null); return allPlayers; }
+    const idx=Math.floor(Math.random()*allPlayers.length);
+    const sitOut=allPlayers[idx];
+    setOhShitPlayer(sitOut);
+    return allPlayers.filter(p=>p!==sitOut);
+  };
+
+  const autoGenerateGroups = (selected) => {
+    const shuffled = [...selected].sort(()=>Math.random()-.5);
+    const groups = [];
+    for(let i=0;i<shuffled.length;i+=4)
+      groups.push(shuffled.slice(i,Math.min(i+4,shuffled.length)));
+    return groups;
+  };
+
+  const generateDraw = (mbdA,mbdB) => {
+    return drawPairings(mbdA,mbdB,[],2);
   };
 
   const submitNewRound = async()=>{
@@ -451,25 +556,41 @@ export default function App() {
       const rid=rRow.id;
       // Insert empty scores for all players
       await sb('scores','POST',selectedPlayers.map(name=>({round_id:rid,player_name:name,holes:Array(18).fill(0)})));
-      // Insert pairings
+      // Insert pairings — store foursomes as groups, 2MBD pairs as teams within each group
+      // We store 2MBD pairs (draftPairs) in the pairings table for scoring
       const pairRows=[];
       draftPairs.forEach((grp,gi)=>grp.forEach((pair,ti)=>{
         pairRows.push({round_id:rid,group_num:gi+1,team_num:ti+1,player1:pair[0],player2:pair[1]||''});
       }));
       if(pairRows.length) await sb('pairings','POST',pairRows);
+      // Store foursomes in round_config as groups json
+      const foursomesJson = JSON.stringify(draftGroups);
       // CTP
       await sb('ctp','POST',[{round_id:rid,hole_key:'h3',player_name:''},{round_id:rid,hole_key:'h6',player_name:''},{round_id:rid,hole_key:'h12',player_name:''}]);
-      // Config
-      const odd=selectedPlayers.length%3!==0&&newRound.numFlights===3?draftFlights.C[draftFlights.C.length-1]:null;
+      // Config — save all flight data separately
+      const oddLowNet=selectedPlayers.length%3!==0&&newRound.numFlights===3?draftFlights.C[draftFlights.C.length-1]:null;
       await sb('round_config','POST',{
         round_id:rid,buy_in:25,super_skin_fee:10,pct_ctp:20,pct_low_net:30,pct_skins:20,pct_2mbd:30,
         num_flights:newRound.numFlights,
+        // Low Net flights
         flight_a:draftFlights.A,flight_b:draftFlights.B,
         flight_c:newRound.numFlights===3?draftFlights.C:[],
-        super_skin_players:[],odd_player:odd||null,
+        // Skins flights (A & B only)
+        skins_a:draftSkinsFlights.A,skins_b:draftSkinsFlights.B,
+        // 2MBD flights (A & B only)
+        mbd_a:draftMbdFlights.A,mbd_b:draftMbdFlights.B,
+        oh_shit_player:ohShitPlayer||null,
+        super_skin_players:[],odd_player:oddLowNet||null,
+        foursomes:draftGroups,
       });
       setNewRound({date:'',courseId:'',numFlights:3});
-      setSelectedPlayers([]);setDraftFlights({A:[],B:[],C:[]});setDraftPairs([]);
+      setSelectedPlayers([]);
+      setDraftFlights({A:[],B:[],C:[]});
+      setDraftSkinsFlights({A:[],B:[]});
+      setDraftMbdFlights({A:[],B:[]});
+      setOhShitPlayer(null);
+      setDraftGroups([]);
+      setDraftPairs([]);
       setNewRoundStep(1);setSelRound(rid);
       await loadAll(rid);setView('groups');
     } catch(e){setErr(e.message);}
@@ -725,71 +846,73 @@ export default function App() {
                 </p>
               </div>
               {adminMode&&isLive&&(
-                <Btn color={C.red} onClick={lockRound}>🔒 Lock Scoring</Btn>
+                <div style={{display:'flex',gap:8}}>
+                  <Btn outline color={C.red} onClick={resetScores}>🗑️ Reset Scores</Btn>
+                  <Btn color={C.red} onClick={lockRound}>🔒 Lock Scoring</Btn>
+                </div>
               )}
             </div>
 
-            {(!round?.groups||round.groups.length===0)&&(
+            {(!round?.config?.foursomes?.length&&!round?.pairings?.length)&&(
               <Card style={{padding:40,textAlign:'center'}}>
                 <div style={{fontSize:'2rem',marginBottom:12}}>⛳</div>
                 <p style={{color:C.muted}}>No round set up yet. Admin → New Round to get started.</p>
               </Card>
             )}
 
+            {/* Show foursomes if available, otherwise fall back to 2MBD groups */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
-              {round?.pairings?.map((pairs,gi)=>{
-                const allInGroup=pairs.flat().filter(Boolean);
-                return (
-                  <Card key={gi}>
-                    <CardHead>Group {gi+1} · {allInGroup.length} players</CardHead>
-                    <div style={{padding:12,display:'flex',flexDirection:'column',gap:8}}>
-                      {pairs.map((pair,ti)=>{
-                        const bb=computeBestBall(round.scores,pair,par);
-                        const bbTotal=bb?sumArr(bb.map((s,i)=>s>0?s:par[i])):null;
-                        const bbPlayed=bb?bb.filter(s=>s>0).length:0;
-                        return (
-                          <div key={ti} style={{background:C.light,borderRadius:8,padding:10,border:`1px solid ${C.border}`}}>
-                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                              <div style={{color:C.muted,fontSize:'0.68rem',fontWeight:600}}>2MBD TEAM {ti+1}</div>
-                              {bbPlayed>0&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:'0.8rem',color:C.green,fontWeight:700}}>BB: {bbTotal} ({bbPlayed}H)</div>}
+              {(round?.config?.foursomes?.length
+                ? round.config.foursomes.map((grp,gi)=>({gi, players:grp, type:'foursome'}))
+                : (round?.pairings||[]).map((pairs,gi)=>({gi, players:pairs.flat().filter(Boolean), type:'mbd'}))
+              ).map(({gi,players,type})=>(
+                <Card key={gi}>
+                  <CardHead>
+                    Group {gi+1} · {players.length} players
+                    {type==='foursome'&&<span style={{color:C.muted,fontSize:'0.68rem',fontWeight:400,marginLeft:6}}>Tee {gi+1}</span>}
+                  </CardHead>
+                  <div style={{padding:12,display:'flex',flexDirection:'column',gap:5}}>
+                    {players.map(name=>{
+                      if(!name) return null;
+                      const sc=round.scores[name]||[];
+                      const played=sc.filter(s=>s>0);
+                      const gross=sumArr(played);
+                      const holesPlayed=played.length;
+                      const flight=round.config?.flight_a?.includes(name)?'A':round.config?.flight_b?.includes(name)?'B':'C';
+                      const allDone=holesPlayed===18;
+                      // Find this player's 2MBD partner
+                      const mbdPair = round.pairings?.flatMap(g=>g).find(p=>p.includes(name));
+                      const mbdPartner = mbdPair?.find(p=>p&&p!==name);
+                      return (
+                        <div key={name} onClick={()=>isLive&&openScoring(name)}
+                          style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:C.card,borderRadius:6,cursor:isLive?'pointer':'default',border:`1.5px solid ${isLive&&holesPlayed===0?C.green:C.border}`,transition:'all .1s'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                            <FlightBadge f={flight}/>
+                            <div>
+                              <div style={{fontWeight:600,fontSize:'0.9rem'}}>{name}</div>
+                              <div style={{color:C.muted,fontSize:'0.67rem'}}>
+                                HC {hcMap[name]??'?'}
+                                {mbdPartner&&<span style={{marginLeft:6,color:C.gold}}>2MBD w/ {mbdPartner}</span>}
+                              </div>
                             </div>
-                            {pair.map(name=>{
-                              if(!name) return null;
-                              const sc=round.scores[name]||[];
-                              const played=sc.filter(s=>s>0);
-                              const gross=sumArr(played);
-                              const holesPlayed=played.length;
-                              const flight=round.config?.flight_a?.includes(name)?'A':round.config?.flight_b?.includes(name)?'B':'C';
-                              return (
-                                <div key={name} onClick={()=>isLive&&openScoring(name)}
-                                  style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',background:C.card,borderRadius:6,marginBottom:4,cursor:isLive?'pointer':'default',border:`1px solid ${C.border}`,transition:'all .1s'}}>
-                                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                                    <FlightBadge f={flight}/>
-                                    <div>
-                                      <div style={{fontWeight:600,fontSize:'0.88rem'}}>{name}</div>
-                                      <div style={{color:C.muted,fontSize:'0.68rem'}}>HC {hcMap[name]??'?'}</div>
-                                    </div>
-                                  </div>
-                                  <div style={{textAlign:'right'}}>
-                                    {holesPlayed>0?(
-                                      <>
-                                        <div style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:'1rem',color:C.green}}>{gross}</div>
-                                        <div style={{color:C.muted,fontSize:'0.67rem'}}>{holesPlayed}/18 holes</div>
-                                      </>
-                                    ):(
-                                      <div style={{color:C.muted,fontSize:'0.75rem'}}>{isLive?'Tap to score':'Not started'}</div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                );
-              })}
+                          <div style={{textAlign:'right',display:'flex',alignItems:'center',gap:8}}>
+                            {holesPlayed>0&&(
+                              <div>
+                                <div style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:'1rem',color:C.green}}>{gross}</div>
+                                <div style={{color:C.muted,fontSize:'0.67rem'}}>{holesPlayed}/18 {allDone?'✅':''}</div>
+                              </div>
+                            )}
+                            {isLive&&(
+                              <div style={{background:holesPlayed===0?C.green:'#86efac',color:holesPlayed===0?'#fff':C.green,borderRadius:6,padding:'6px 12px',fontSize:'0.78rem',fontWeight:700,whiteSpace:'nowrap'}}>
+                                {holesPlayed===0?'⛳ Start':'✏️ Edit'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
             </div>
           </div>
         )}
@@ -812,10 +935,10 @@ export default function App() {
               {/* Pot summary */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
                 {[
-                  {icon:'📍',label:'CTP',pot:payouts.ctpPot,sub:`${fmt$0(payouts.ctpPerHole)}/hole`},
-                  {icon:'🏅',label:'Low Net',pot:payouts.lowNetPot,sub:`${fmt$0(payouts.lowNetPot/payouts.flights.length)}/flight`},
-                  {icon:'🎯',label:'Skins',pot:payouts.skinsPot,sub:`${fmt$0(payouts.skinsPot/payouts.flights.length)}/flight`},
-                  {icon:'🎲',label:'2MBD',pot:payouts.twoMbdPot,sub:'60% / 40%'},
+                  {icon:'📍',label:'CTP',        pot:payouts.ctpPot,    sub:`${fmt$0(payouts.ctpPerHole)}/hole`},
+                  {icon:'🏅',label:'Low Net',    pot:payouts.lowNetPot, sub:`${fmt$0(payouts.lowNetPot/(payouts.lowNetFlights?.length||2))}/flight`},
+                  {icon:'🎯',label:'Skins',      pot:payouts.skinsPot,  sub:`${fmt$0(payouts.skinsPot/2)}/flight · A&B only`},
+                  {icon:'🎲',label:'2MBD',       pot:payouts.twoMbdPot, sub:'60% / 40% · A&B only'},
                 ].map(x=>(
                   <Card key={x.label}>
                     <div style={{padding:'14px',textAlign:'center'}}>
@@ -828,24 +951,38 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Per flight */}
-              <div style={{display:'grid',gridTemplateColumns:`repeat(${payouts.flights.length},1fr)`,gap:12,marginBottom:14}}>
-                {payouts.flights.map(({k})=>(
-                  <Card key={k}>
-                    <CardHead><FlightBadge f={k}/></CardHead>
-                    <div style={{padding:12}}>
-                      <div style={{marginBottom:10}}>
-                        <div style={{color:C.muted,fontSize:'0.65rem',letterSpacing:'0.06em',marginBottom:6}}>🏅 LOW NET — {fmt$0(payouts.flightLowNet[k]?.pot||0)}</div>
+              {/* Low Net per flight */}
+              <div style={{marginBottom:6}}>
+                <div style={{color:C.muted,fontSize:'0.7rem',fontWeight:600,letterSpacing:'0.05em',marginBottom:6}}>🏅 LOW NET — {payouts.lowNetFlights?.length||2} FLIGHTS</div>
+                <div style={{display:'grid',gridTemplateColumns:`repeat(${payouts.lowNetFlights?.length||2},1fr)`,gap:12,marginBottom:14}}>
+                  {(payouts.lowNetFlights||[{k:'A'},{k:'B'}]).map(({k})=>(
+                    <Card key={k}>
+                      <CardHead><FlightBadge f={k}/> <span style={{color:C.muted,fontSize:'0.68rem',fontWeight:400,marginLeft:4}}>{fmt$0(payouts.flightLowNet[k]?.pot||0)}</span></CardHead>
+                      <div style={{padding:10}}>
                         {(payouts.flightLowNet[k]?.places||[]).map((p,i)=>(
                           <div key={p.name} style={{display:'flex',justifyContent:'space-between',padding:'5px 8px',background:i===0?C.light:C.bg,borderRadius:5,marginBottom:4,border:`1px solid ${C.border}`}}>
                             <span style={{fontSize:'0.78rem',fontWeight:i===0?600:400}}>{['🥇','🥈','🥉'][i]} {p.name}</span>
-                            <span style={{color:C.gold,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt$0(p.payout)}</span>
+                            <div style={{textAlign:'right'}}>
+                              <span style={{color:C.gold,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt$0(p.payout)}</span>
+                              <span style={{color:C.muted,fontSize:'0.67rem',marginLeft:6}}>net {p.net}</span>
+                            </div>
                           </div>
                         ))}
                         {!(payouts.flightLowNet[k]?.places||[]).length&&<p style={{color:C.muted,fontSize:'0.74rem',margin:0}}>In progress…</p>}
                       </div>
-                      <div>
-                        <div style={{color:C.muted,fontSize:'0.65rem',letterSpacing:'0.06em',marginBottom:6}}>🎯 SKINS — {fmt$0(payouts.flightSkins[k]?.pot||0)}</div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Skins A & B only */}
+              <div style={{marginBottom:6}}>
+                <div style={{color:C.muted,fontSize:'0.7rem',fontWeight:600,letterSpacing:'0.05em',marginBottom:6}}>🎯 SKINS — A & B FLIGHTS ONLY</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+                  {(payouts.skinsFlights||[{k:'A'},{k:'B'}]).map(({k})=>(
+                    <Card key={k}>
+                      <CardHead><FlightBadge f={k}/> <span style={{color:C.muted,fontSize:'0.68rem',fontWeight:400,marginLeft:4}}>{fmt$0(payouts.flightSkins[k]?.pot||0)} · {fmt$(payouts.flightSkins[k]?.perSkin||0)}/skin</span></CardHead>
+                      <div style={{padding:10}}>
                         {(payouts.flightSkins[k]?.winners||[]).slice(0,3).map((w,i)=>(
                           <div key={w.name} style={{display:'flex',justifyContent:'space-between',padding:'5px 8px',background:C.bg,borderRadius:5,marginBottom:4,border:`1px solid ${C.border}`}}>
                             <span style={{fontSize:'0.77rem',color:C.muted}}>{w.name} ×{w.count}</span>
@@ -855,9 +992,9 @@ export default function App() {
                         {!(payouts.flightSkins[k]?.winners||[]).length&&<p style={{color:C.muted,fontSize:'0.74rem',margin:0}}>No outright winners yet</p>}
                         {(payouts.flightSkins[k]?.totalCarry||0)>0&&<div style={{color:C.red,fontSize:'0.69rem',marginTop:4}}>⚡ {payouts.flightSkins[k].totalCarry} carrying over</div>}
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))}
+                </div>
               </div>
 
               {/* Super Skins */}
@@ -917,8 +1054,13 @@ export default function App() {
                   </div>
                 </Card>
                 <Card>
-                  <CardHead>🎲 2MBD — {fmt$0(payouts.twoMbdPot)}</CardHead>
+                  <CardHead>🎲 2MBD — {fmt$0(payouts.twoMbdPot)} · A & B only</CardHead>
                   <div style={{padding:'12px 16px'}}>
+                    {payouts.twoMbd.ohShitPlayer&&(
+                      <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'5px 10px',marginBottom:8,fontSize:'0.74rem',color:C.red}}>
+                        ⚠️ Oh Shit: <strong>{payouts.twoMbd.ohShitPlayer}</strong> sits this draw — refund their 2MBD portion
+                      </div>
+                    )}
                     {payouts.twoMbd.winner?(
                       <>
                         <div style={{background:C.light,borderRadius:8,padding:'10px 14px',marginBottom:8,border:`1px solid ${C.border}`}}>
@@ -945,7 +1087,7 @@ export default function App() {
         {view==='board'&&(
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:16,color:C.green}}>🏆 Scores by Flight</h2>
-            <div style={{display:'grid',gridTemplateColumns:`repeat(${payouts?.flights?.length||3},1fr)`,gap:12,marginBottom:16}}>
+            <div style={{display:'grid',gridTemplateColumns:`repeat(${payouts?.lowNetFlights?.length||3},1fr)`,gap:12,marginBottom:16}}>
               {(payouts?.flights||[{k:'A'},{k:'B'},{k:'C'}]).map(({k})=>(
                 <Card key={k}>
                   <CardHead><FlightBadge f={k}/></CardHead>
@@ -1030,11 +1172,14 @@ export default function App() {
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:16,color:C.green}}>🎯 Skins</h2>
 
-            {/* Flighted skins */}
+            {/* Flighted skins — A & B only */}
             {payouts&&(
               <>
-                <div style={{display:'grid',gridTemplateColumns:`repeat(${payouts.flights.length},1fr)`,gap:12,marginBottom:16}}>
-                  {payouts.flights.map(({k})=>(
+                <div style={{background:C.light,borderRadius:8,padding:'6px 12px',marginBottom:12,border:`1px solid ${C.border}`,fontSize:'0.75rem',color:C.muted}}>
+                  Skins are always <strong>Flight A vs Flight B only</strong> — separate from Low Net flights
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+                  {(payouts.skinsFlights||[{k:'A'},{k:'B'}]).map(({k})=>(
                     <Card key={k}>
                       <CardHead><FlightBadge f={k}/> <span style={{color:C.muted,fontSize:'0.7rem',fontWeight:400,marginLeft:4}}>{fmt$0(payouts.flightSkins[k]?.pot||0)} · {fmt$(payouts.flightSkins[k]?.perSkin||0)}/skin</span></CardHead>
                       <div style={{padding:12}}>
@@ -1269,7 +1414,7 @@ export default function App() {
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>➕ New Round</h2>
             <div style={{display:'flex',gap:8,marginBottom:20}}>
-              {[1,2,3].map(s=>(
+              {[1,2,3,4,5].map(s=>(
                 <div key={s} style={{flex:1,height:4,borderRadius:4,background:newRoundStep>=s?C.green:C.border}}/>
               ))}
             </div>
@@ -1308,14 +1453,22 @@ export default function App() {
                 </div>
 
                 <div style={{marginBottom:12}}>
-                  <label style={{display:'block',color:C.muted,fontSize:'0.72rem',marginBottom:8}}>Select Players ({selectedPlayers.length} selected)</label>
-                  <div style={{display:'flex',flexWrap:'wrap',gap:6,maxHeight:300,overflowY:'auto',padding:4}}>
-                    {players.map(p=>{
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                    <label style={{color:C.muted,fontSize:'0.72rem'}}>Select Players ({selectedPlayers.length} selected) — sorted by handicap</label>
+                    <div style={{display:'flex',gap:6}}>
+                      <button onClick={()=>setSelectedPlayers(players.map(p=>p.name))} style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'3px 10px',fontSize:'0.72rem',cursor:'pointer',color:C.text}}>Select All</button>
+                      <button onClick={()=>setSelectedPlayers([])} style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'3px 10px',fontSize:'0.72rem',cursor:'pointer',color:C.text}}>Clear</button>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:5,maxHeight:320,overflowY:'auto',padding:6,background:C.light,borderRadius:8,border:`1px solid ${C.border}`}}>
+                    {[...players].sort((a,b)=>a.hc-b.hc).map(p=>{
                       const sel=selectedPlayers.includes(p.name);
                       return (
                         <button key={p.name} onClick={()=>setSelectedPlayers(prev=>sel?prev.filter(x=>x!==p.name):[...prev,p.name])}
-                          style={{background:sel?C.green:C.light,color:sel?'#fff':C.text,border:`1.5px solid ${sel?C.green:C.border}`,borderRadius:6,padding:'5px 12px',fontSize:'0.77rem',cursor:'pointer',fontWeight:sel?600:400}}>
-                          {sel?'✓ ':''}{p.name} <span style={{opacity:0.7,fontSize:'0.65rem'}}>HC{p.hc}</span>
+                          style={{background:sel?C.green:C.card,color:sel?'#fff':C.text,border:`1.5px solid ${sel?C.green:C.border}`,borderRadius:6,padding:'6px 12px',fontSize:'0.78rem',cursor:'pointer',fontWeight:sel?600:400,display:'flex',alignItems:'center',gap:6}}>
+                          {sel&&<span style={{fontSize:'0.7rem'}}>✓</span>}
+                          <span>{p.name}</span>
+                          <span style={{background:sel?'rgba(255,255,255,0.25)':'#e4f0e6',color:sel?'#fff':C.green,borderRadius:4,padding:'1px 6px',fontSize:'0.68rem',fontWeight:700}}>HC {p.hc}</span>
                         </button>
                       );
                     })}
@@ -1323,9 +1476,15 @@ export default function App() {
                 </div>
 
                 <Btn onClick={()=>{
-                  const f=autoAssignFlights(selectedPlayers,newRound.numFlights);
-                  setDraftFlights(f);
-                  setDraftPairs(generateDraw(f,newRound.numFlights));
+                  const {lowNet,skinsAndMbd}=autoAssignFlights(selectedPlayers,newRound.numFlights);
+                  setDraftFlights(lowNet);
+                  setDraftSkinsFlights(skinsAndMbd);
+                  const mbdActive=doOhShitDraw([...selectedPlayers].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0)));
+                  const half=Math.floor(mbdActive.length/2);
+                  const mbd={A:mbdActive.slice(0,half),B:mbdActive.slice(half)};
+                  setDraftMbdFlights(mbd);
+                  setDraftPairs(generateDraw(mbd.A,mbd.B));
+                  setDraftGroups(autoGenerateGroups(selectedPlayers));
                   setNewRoundStep(2);
                 }} disabled={!newRound.date||!newRound.courseId||selectedPlayers.length<4}>
                   Next — Assign Flights →
@@ -1335,59 +1494,257 @@ export default function App() {
 
             {newRoundStep===2&&(
               <Card style={{padding:20,marginBottom:14}}>
-                <div style={{color:C.green,fontWeight:700,marginBottom:16}}>Step 2 — Flight Assignment (drag to adjust)</div>
-                <div style={{display:'grid',gridTemplateColumns:newRound.numFlights===2?'1fr 1fr':'1fr 1fr 1fr',gap:12,marginBottom:16}}>
-                  {['A','B',...(newRound.numFlights===3?['C']:[])].map(f=>(
-                    <div key={f}>
-                      <div style={{marginBottom:6,display:'flex',alignItems:'center',gap:6}}><FlightBadge f={f}/><span style={{color:C.muted,fontSize:'0.7rem'}}>{draftFlights[f]?.length} players</span></div>
-                      <div style={{display:'flex',flexDirection:'column',gap:3,minHeight:60,background:C.light,borderRadius:8,padding:8,border:`1px solid ${C.border}`}}>
-                        {(draftFlights[f]||[]).map(p=>(
-                          <div key={p} style={{background:C.card,borderRadius:5,padding:'5px 8px',fontSize:'0.76rem',display:'flex',justifyContent:'space-between',alignItems:'center',border:`1px solid ${C.border}`}}>
-                            <span>{p} <span style={{color:C.muted,fontSize:'0.65rem'}}>HC{hcMap[p]??'?'}</span></span>
-                            <select defaultValue='' onChange={e=>{
-                              if(!e.target.value) return;
-                              const to=e.target.value;
-                              setDraftFlights(prev=>({
-                                ...prev,
-                                [f]:prev[f].filter(x=>x!==p),
-                                [to]:[...(prev[to]||[]),p],
-                              }));
-                              e.target.value='';
-                            }} style={{background:'transparent',border:'none',color:C.muted,fontSize:'0.65rem',cursor:'pointer'}}>
-                              <option value=''>Move→</option>
-                              {['A','B',...(newRound.numFlights===3?['C']:[])].filter(x=>x!==f).map(x=><option key={x} value={x}>{x}</option>)}
-                            </select>
-                          </div>
-                        ))}
+                <div style={{color:C.green,fontWeight:700,marginBottom:4}}>Step 2 — Flight Assignment</div>
+                <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>
+                  Low Net uses A/B/C · Skins and 2MBD always use A/B only · All sorted by HC lowest→highest
+                </p>
+
+                {/* LOW NET */}
+                <div style={{background:C.light,borderRadius:8,padding:12,marginBottom:12,border:`1px solid ${C.border}`}}>
+                  <div style={{fontWeight:700,fontSize:'0.82rem',color:C.green,marginBottom:8}}>🏅 Low Net Flights ({newRound.numFlights} flights)</div>
+                  <div style={{display:'grid',gridTemplateColumns:newRound.numFlights===2?'1fr 1fr':'1fr 1fr 1fr',gap:10}}>
+                    {['A','B',...(newRound.numFlights===3?['C']:[])].map(f=>(
+                      <div key={f}>
+                        <div style={{marginBottom:4,display:'flex',alignItems:'center',gap:6}}>
+                          <FlightBadge f={f}/>
+                          <span style={{color:C.muted,fontSize:'0.68rem'}}>{draftFlights[f]?.length}p · HC {draftFlights[f]?.length?`${hcMap[draftFlights[f][0]]??'?'}–${hcMap[draftFlights[f][draftFlights[f].length-1]]??'?'}`:'—'}</span>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:2,background:C.card,borderRadius:6,padding:6,border:`1px solid ${C.border}`,minHeight:40}}>
+                          {([...(draftFlights[f]||[])].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0))).map(p=>(
+                            <div key={p} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 6px',fontSize:'0.73rem',background:C.light,borderRadius:4}}>
+                              <span><span style={{color:C.green,fontWeight:700,fontSize:'0.65rem',marginRight:4}}>{hcMap[p]??'?'}</span>{p}</span>
+                              <select defaultValue='' onChange={e=>{if(!e.target.value) return;const to=e.target.value;setDraftFlights(prev=>({...prev,[f]:prev[f].filter(x=>x!==p),[to]:[...(prev[to]||[]),p]}));e.target.value='';}}
+                                style={{background:'transparent',border:'none',color:C.muted,fontSize:'0.63rem',cursor:'pointer'}}>
+                                <option value=''>→</option>
+                                {['A','B',...(newRound.numFlights===3?['C']:[])].filter(x=>x!==f).map(x=><option key={x} value={x}>{x}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+
+                {/* SKINS A/B */}
+                <div style={{background:C.light,borderRadius:8,padding:12,marginBottom:12,border:`1px solid ${C.border}`}}>
+                  <div style={{fontWeight:700,fontSize:'0.82rem',color:C.green,marginBottom:8}}>🎯 Skins Flights (A & B only)</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    {['A','B'].map(f=>(
+                      <div key={f}>
+                        <div style={{marginBottom:4,display:'flex',alignItems:'center',gap:6}}>
+                          <FlightBadge f={f}/>
+                          <span style={{color:C.muted,fontSize:'0.68rem'}}>{draftSkinsFlights[f]?.length}p</span>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:2,background:C.card,borderRadius:6,padding:6,border:`1px solid ${C.border}`,minHeight:40}}>
+                          {([...(draftSkinsFlights[f]||[])].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0))).map(p=>(
+                            <div key={p} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 6px',fontSize:'0.73rem',background:C.light,borderRadius:4}}>
+                              <span><span style={{color:C.green,fontWeight:700,fontSize:'0.65rem',marginRight:4}}>{hcMap[p]??'?'}</span>{p}</span>
+                              <select defaultValue='' onChange={e=>{if(!e.target.value) return;const to=e.target.value;setDraftSkinsFlights(prev=>({...prev,[f]:prev[f].filter(x=>x!==p),[to]:[...(prev[to]||[]),p]}));e.target.value='';}}
+                                style={{background:'transparent',border:'none',color:C.muted,fontSize:'0.63rem',cursor:'pointer'}}>
+                                <option value=''>→</option>
+                                {['A','B'].filter(x=>x!==f).map(x=><option key={x} value={x}>{x}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2MBD A/B + OH SHIT */}
+                <div style={{background:C.light,borderRadius:8,padding:12,marginBottom:16,border:`1px solid ${C.border}`}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                    <div style={{fontWeight:700,fontSize:'0.82rem',color:C.green}}>🎲 2MBD Flights (A & B only)</div>
+                    <Btn small outline onClick={()=>{
+                      const all=[...selectedPlayers].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0));
+                      const mbdActive=doOhShitDraw(all);
+                      const half=Math.floor(mbdActive.length/2);
+                      const mbd={A:mbdActive.slice(0,half),B:mbdActive.slice(half)};
+                      setDraftMbdFlights(mbd);
+                      setDraftPairs(generateDraw(mbd.A,mbd.B));
+                    }}>🎲 Re-draw Oh Shit</Btn>
+                  </div>
+                  {ohShitPlayer&&(
+                    <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'6px 12px',marginBottom:8,fontSize:'0.78rem',color:C.red}}>
+                      ⚠️ <strong>Oh Shit Draw:</strong> <strong>{ohShitPlayer}</strong> sits out this 2MBD draw — money refunded for this game
+                    </div>
+                  )}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    {['A','B'].map(f=>(
+                      <div key={f}>
+                        <div style={{marginBottom:4,display:'flex',alignItems:'center',gap:6}}>
+                          <FlightBadge f={f}/>
+                          <span style={{color:C.muted,fontSize:'0.68rem'}}>{draftMbdFlights[f]?.length}p</span>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:2,background:C.card,borderRadius:6,padding:6,border:`1px solid ${C.border}`,minHeight:40}}>
+                          {([...(draftMbdFlights[f]||[])].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0))).map(p=>(
+                            <div key={p} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 6px',fontSize:'0.73rem',background:C.light,borderRadius:4}}>
+                              <span><span style={{color:C.green,fontWeight:700,fontSize:'0.65rem',marginRight:4}}>{hcMap[p]??'?'}</span>{p}</span>
+                              <select defaultValue='' onChange={e=>{if(!e.target.value) return;const to=e.target.value;setDraftMbdFlights(prev=>({...prev,[f]:prev[f].filter(x=>x!==p),[to]:[...(prev[to]||[]),p]}));e.target.value='';}}
+                                style={{background:'transparent',border:'none',color:C.muted,fontSize:'0.63rem',cursor:'pointer'}}>
+                                <option value=''>→</option>
+                                {['A','B'].filter(x=>x!==f).map(x=><option key={x} value={x}>{x}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={{display:'flex',gap:8}}>
                   <Btn outline onClick={()=>setNewRoundStep(1)}>← Back</Btn>
-                  <Btn onClick={()=>{setDraftPairs(generateDraw(draftFlights,newRound.numFlights));setNewRoundStep(3);}}>Next — Draw Pairings →</Btn>
+                  <Btn onClick={()=>{setDraftPairs(generateDraw(draftMbdFlights.A,draftMbdFlights.B));setNewRoundStep(3);}}>Next — Draw Pairings →</Btn>
                 </div>
               </Card>
             )}
 
             {newRoundStep===3&&(
               <Card style={{padding:20,marginBottom:14}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-                  <div style={{color:C.green,fontWeight:700}}>Step 3 — 2MBD Draw (A with B or C)</div>
-                  <Btn small outline onClick={()=>setDraftPairs(generateDraw(draftFlights,newRound.numFlights))}>🔀 Redraw</Btn>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                  <div style={{color:C.green,fontWeight:700}}>Step 3 — Build Foursomes</div>
+                  <Btn small outline onClick={()=>setDraftGroups(autoGenerateGroups(selectedPlayers))}>🔀 Auto-shuffle</Btn>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:16}}>
+                <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:14}}>
+                  Tap a player then tap a group to move them. Groups of 4 — foursomes play together on the course. 2MBD partners are drawn separately.
+                </p>
+
+                {(()=>{
+                  const [movingPlayer, setMovingPlayer] = useState(null);
+                  const allInGroups = draftGroups.flat();
+                  const unassigned = selectedPlayers.filter(p=>!allInGroups.includes(p));
+
+                  const moveToGroup = (player, groupIdx) => {
+                    setDraftGroups(prev => {
+                      const next = prev.map(g=>g.filter(p=>p!==player));
+                      if(groupIdx==='unassigned') return next;
+                      const target = [...next[groupIdx], player];
+                      next[groupIdx] = target;
+                      return next;
+                    });
+                    setMovingPlayer(null);
+                  };
+
+                  const addGroup = () => setDraftGroups(prev=>[...prev,[]]);
+                  const removeGroup = (gi) => {
+                    const freed = draftGroups[gi]||[];
+                    setDraftGroups(prev=>prev.filter((_,i)=>i!==gi));
+                  };
+
+                  return (
+                    <div>
+                      {/* Unassigned pool */}
+                      {unassigned.length>0&&(
+                        <div style={{marginBottom:14,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:10}}>
+                          <div style={{fontSize:'0.72rem',fontWeight:700,color:'#c2410c',marginBottom:6}}>⚠️ Unassigned ({unassigned.length})</div>
+                          <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+                            {unassigned.map(p=>(
+                              <button key={p} onClick={()=>setMovingPlayer(movingPlayer===p?null:p)}
+                                style={{background:movingPlayer===p?'#c2410c':'#fff',color:movingPlayer===p?'#fff':'#c2410c',border:'1.5px solid #fed7aa',borderRadius:6,padding:'4px 10px',fontSize:'0.76rem',cursor:'pointer',fontWeight:movingPlayer===p?700:400}}>
+                                {movingPlayer===p?'✓ ':''}{p} <span style={{opacity:0.7}}>HC{hcMap[p]??'?'}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Group grid */}
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:12}}>
+                        {draftGroups.map((grp,gi)=>{
+                          const isTarget = movingPlayer && grp.length<4 && !grp.includes(movingPlayer);
+                          const isFull = grp.length>=4;
+                          return (
+                            <div key={gi} onClick={()=>{ if(movingPlayer && !grp.includes(movingPlayer) && grp.length<4) moveToGroup(movingPlayer,gi); }}
+                              style={{background:isTarget?'#dcfce7':C.light,borderRadius:8,padding:10,border:`2px solid ${isTarget?C.green:C.border}`,cursor:isTarget?'pointer':'default',transition:'all .15s'}}>
+                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                                <span style={{fontSize:'0.74rem',fontWeight:700,color:C.green}}>GROUP {gi+1}</span>
+                                <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                                  <span style={{fontSize:'0.68rem',color:isFull?C.green:C.muted}}>{grp.length}/4 {isFull?'✅':''}</span>
+                                  {isTarget&&<span style={{fontSize:'0.68rem',color:C.green,fontWeight:700}}>← Add here</span>}
+                                  <button onClick={e=>{e.stopPropagation();removeGroup(gi);}}
+                                    style={{background:'transparent',border:'none',color:C.muted,cursor:'pointer',fontSize:'0.75rem',padding:0}}>✕</button>
+                                </div>
+                              </div>
+                              <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                                {grp.map(p=>{
+                                  const f=draftFlights.A?.includes(p)?'A':draftFlights.B?.includes(p)?'B':'C';
+                                  return (
+                                    <div key={p} onClick={e=>{e.stopPropagation();setMovingPlayer(movingPlayer===p?null:p);}}
+                                      style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:movingPlayer===p?C.green:C.card,borderRadius:5,padding:'5px 8px',cursor:'pointer',border:`1px solid ${movingPlayer===p?C.green:C.border}`}}>
+                                      <span style={{display:'flex',alignItems:'center',gap:6}}>
+                                        <FlightBadge f={f}/>
+                                        <span style={{fontWeight:600,fontSize:'0.8rem',color:movingPlayer===p?'#fff':C.text}}>{p}</span>
+                                        <span style={{color:movingPlayer===p?'rgba(255,255,255,0.7)':C.muted,fontSize:'0.67rem'}}>HC{hcMap[p]??'?'}</span>
+                                      </span>
+                                      {movingPlayer===p&&<span style={{color:'#fff',fontSize:'0.68rem'}}>tap group to move</span>}
+                                    </div>
+                                  );
+                                })}
+                                {grp.length===0&&<div style={{color:C.muted,fontSize:'0.74rem',textAlign:'center',padding:'8px 0'}}>{isTarget?'Drop here':'Empty group'}</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <button onClick={addGroup}
+                        style={{width:'100%',background:'transparent',border:`1.5px dashed ${C.border}`,borderRadius:8,padding:'8px',fontSize:'0.78rem',color:C.muted,cursor:'pointer',marginBottom:14}}>
+                        + Add Group
+                      </button>
+
+                      <div style={{display:'flex',gap:8}}>
+                        <Btn outline onClick={()=>setNewRoundStep(2)}>← Back</Btn>
+                        <Btn onClick={()=>setNewRoundStep(4)} disabled={unassigned.length>0}>
+                          {unassigned.length>0?`${unassigned.length} players unassigned`:'Next — 2MBD Draw →'}
+                        </Btn>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </Card>
+            )}
+
+            {newRoundStep===4&&(
+              <Card style={{padding:20,marginBottom:14}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                  <div style={{color:C.green,fontWeight:700}}>Step 4 — 2MBD Draw</div>
+                  <Btn small outline onClick={()=>{
+                    const mbdActive=doOhShitDraw([...selectedPlayers].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0)));
+                    const half=Math.floor(mbdActive.length/2);
+                    const mbd={A:mbdActive.slice(0,half),B:mbdActive.slice(half)};
+                    setDraftMbdFlights(mbd);
+                    setDraftPairs(generateDraw(mbd.A,mbd.B));
+                  }}>🎲 Redraw</Btn>
+                </div>
+                <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:12}}>
+                  Random A+B pairings — independent of foursomes. Partners can be in different groups on the course.
+                </p>
+                {ohShitPlayer&&(
+                  <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'7px 12px',marginBottom:12,fontSize:'0.78rem',color:C.red}}>
+                    ⚠️ <strong>Oh Shit Draw:</strong> <strong>{ohShitPlayer}</strong> sits out this 2MBD — refund their 2MBD portion
+                  </div>
+                )}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8,marginBottom:16}}>
                   {draftPairs.map((grp,gi)=>(
-                    <div key={gi} style={{background:C.light,borderRadius:8,padding:12,border:`1px solid ${C.border}`}}>
-                      <div style={{color:C.muted,fontSize:'0.7rem',fontWeight:600,marginBottom:8}}>GROUP {gi+1}</div>
+                    <div key={gi} style={{background:C.light,borderRadius:8,padding:10,border:`1px solid ${C.border}`}}>
+                      <div style={{fontSize:'0.7rem',fontWeight:700,color:C.muted,marginBottom:6}}>2MBD PAIR {gi+1}</div>
                       {grp.map((pair,ti)=>(
-                        <div key={ti} style={{background:C.card,borderRadius:6,padding:'7px 10px',marginBottom:5,border:`1px solid ${C.border}`}}>
-                          <div style={{fontSize:'0.72rem',color:C.muted,marginBottom:3}}>Team {ti+1}</div>
-                          <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                        <div key={ti} style={{background:C.card,borderRadius:6,padding:'7px 10px',marginBottom:4,border:`1px solid ${C.border}`}}>
+                          <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                             {pair.filter(Boolean).map(n=>{
-                              const f=draftFlights.A?.includes(n)?'A':draftFlights.B?.includes(n)?'B':'C';
-                              return <span key={n} style={{display:'flex',alignItems:'center',gap:4}}><FlightBadge f={f}/><span style={{fontSize:'0.8rem',fontWeight:600}}>{n}</span></span>;
+                              const f=draftMbdFlights.A?.includes(n)?'A':'B';
+                              return (
+                                <span key={n} style={{display:'flex',alignItems:'center',gap:4}}>
+                                  <FlightBadge f={f}/>
+                                  <span style={{fontWeight:600,fontSize:'0.82rem'}}>{n}</span>
+                                  <span style={{color:C.muted,fontSize:'0.68rem'}}>HC{hcMap[n]??'?'}</span>
+                                </span>
+                              );
                             })}
+                            {pair.filter(Boolean).length<2&&<span style={{color:C.red,fontSize:'0.72rem'}}>⚠ Solo</span>}
                           </div>
                         </div>
                       ))}
@@ -1395,8 +1752,50 @@ export default function App() {
                   ))}
                 </div>
                 <div style={{display:'flex',gap:8}}>
-                  <Btn outline onClick={()=>setNewRoundStep(2)}>← Back</Btn>
-                  <Btn onClick={submitNewRound} disabled={saving}>{saving?'Creating round…':'✓ Start Round!'}</Btn>
+                  <Btn outline onClick={()=>setNewRoundStep(3)}>← Back</Btn>
+                  <Btn onClick={()=>setNewRoundStep(5)}>Next — Review →</Btn>
+                </div>
+              </Card>
+            )}
+
+            {newRoundStep===5&&(
+              <Card style={{padding:20,marginBottom:14}}>
+                <div style={{color:C.green,fontWeight:700,marginBottom:14}}>Step 5 — Review & Start</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+                  {/* Foursomes summary */}
+                  <div>
+                    <div style={{fontSize:'0.75rem',fontWeight:700,color:C.muted,marginBottom:8,letterSpacing:'0.05em'}}>⛳ FOURSOMES ({draftGroups.length} groups)</div>
+                    {draftGroups.map((grp,gi)=>(
+                      <div key={gi} style={{background:C.light,borderRadius:6,padding:'7px 10px',marginBottom:5,border:`1px solid ${C.border}`}}>
+                        <div style={{fontSize:'0.68rem',color:C.muted,marginBottom:3}}>Group {gi+1}</div>
+                        <div style={{fontSize:'0.8rem',fontWeight:500}}>{grp.join(', ')}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* 2MBD summary */}
+                  <div>
+                    <div style={{fontSize:'0.75rem',fontWeight:700,color:C.muted,marginBottom:8,letterSpacing:'0.05em'}}>🎲 2MBD PAIRS</div>
+                    {ohShitPlayer&&(
+                      <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'5px 8px',marginBottom:6,fontSize:'0.72rem',color:C.red}}>
+                        ⚠️ {ohShitPlayer} sits out
+                      </div>
+                    )}
+                    {draftPairs.map((grp,gi)=>grp.map((pair,ti)=>(
+                      <div key={`${gi}-${ti}`} style={{background:C.light,borderRadius:6,padding:'5px 8px',marginBottom:4,border:`1px solid ${C.border}`,fontSize:'0.78rem'}}>
+                        {pair.filter(Boolean).join(' & ')}
+                      </div>
+                    )))}
+                  </div>
+                </div>
+                <div style={{background:C.light,borderRadius:6,padding:'10px 12px',marginBottom:14,fontSize:'0.75rem',color:C.muted}}>
+                  📍 {round?.course?.name||dbCourses.find(c=>c.id===Number(newRound.courseId))?.name} · {newRound.date} · {selectedPlayers.length} players · {newRound.numFlights} Low Net flights
+                  {ohShitPlayer&&` · ${ohShitPlayer} sits 2MBD`}
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <Btn outline onClick={()=>setNewRoundStep(4)}>← Back</Btn>
+                  <Btn onClick={submitNewRound} disabled={saving} style={{flex:1}}>
+                    {saving?'Creating round…':'🚀 Start Round!'}
+                  </Btn>
                 </div>
               </Card>
             )}
@@ -1481,7 +1880,47 @@ export default function App() {
         {view==='roster'&&adminMode&&(
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>👥 Player Roster</h2>
-            <Card style={{marginBottom:14}}>
+            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:12}}>
+              {players.length} players · Click HC to edit · HC auto-updates using GHIN method after each locked round
+            </p>
+            {/* GHIN HC update button */}
+            {rounds.filter(r=>r.status==='locked').length>0&&(
+              <Card style={{marginBottom:14,border:`1px solid ${C.green}40`}}>
+                <div style={{padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <div style={{fontWeight:600,fontSize:'0.85rem',color:C.green}}>🧮 GHIN Handicap Calculator</div>
+                    <div style={{color:C.muted,fontSize:'0.72rem',marginTop:2}}>
+                      Calculates score differentials from all locked rounds using WHS formula: (Gross − CR) × 113 / Slope × 0.96
+                    </div>
+                  </div>
+                  <Btn small onClick={async()=>{
+                    setSaving(true);
+                    try {
+                      for(const player of players){
+                        const diffs=[];
+                        rounds.filter(r=>r.status==='locked').forEach(r=>{
+                          const sc=r.scores[player.name];
+                          if(!sc||!r.course) return;
+                          const gross=sumArr(sc.map((s,i)=>s>0?s:r.par[i]));
+                          const cr=parseFloat(r.course.course_rating)||72;
+                          const sl=parseInt(r.course.slope)||113;
+                          diffs.push(calcScoreDifferential(gross,cr,sl));
+                        });
+                        if(!diffs.length) continue;
+                        const newHc=calcGHINHandicap(diffs);
+                        if(newHc!==null&&Math.round(newHc)!==player.hc){
+                          await sb(`players?id=eq.${player.id}`,'PATCH',{hc:Math.round(newHc)});
+                        }
+                      }
+                      await loadAll(selRound);
+                    } catch(e){setErr(e.message);}
+                    setSaving(false);
+                  }}>
+                    {saving?'Updating…':'Update All HCs'}
+                  </Btn>
+                </div>
+              </Card>
+            )}
               <CardHead>Add Player</CardHead>
               <div style={{padding:14,display:'flex',gap:10,flexWrap:'wrap'}}>
                 <input defaultValue={addPlayerName} onBlur={e=>setAddPlayerName(e.target.value)} placeholder="Full name"
