@@ -1925,6 +1925,7 @@ export default function App() {
                 </div>
               </Card>
             )}
+            <Card style={{marginBottom:14}}>
               <CardHead>Add Player</CardHead>
               <div style={{padding:14,display:'flex',gap:10,flexWrap:'wrap'}}>
                 <input defaultValue={addPlayerName} onBlur={e=>setAddPlayerName(e.target.value)} placeholder="Full name"
