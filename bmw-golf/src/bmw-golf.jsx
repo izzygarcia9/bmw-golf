@@ -219,8 +219,10 @@ const calcGHINHandicap = (differentials) => {
     : sorted.slice(0,1);
   if(!use.length) return null;
   const avg = use.reduce((a,b)=>a+b,0)/use.length;
-  return Math.floor(avg * 0.96 * 10) / 10; // truncate to 1 decimal
-}; = (flightA,flightB,flightC,numFlights) => {
+  return Math.floor(avg * 0.96 * 10) / 10;
+};
+
+const drawPairings = (flightA,flightB,flightC,numFlights) => {
   const sA  = [...(flightA||[])].sort(()=>Math.random()-.5);
   const sBC = [...(flightB||[]),...(numFlights===3?(flightC||[]):[])].sort(()=>Math.random()-.5);
   const pairs = [];
