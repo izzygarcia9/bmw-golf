@@ -454,13 +454,16 @@ export default function App() {
 
   // Season rank map — top 10 by total winnings, shown as gold badge in groups
   const seasonRankMap=useMemo(()=>{
+    if(!payoutsHistory?.length) return {};
     const winnings={};
     payoutsHistory.forEach(p=>{
+      if(!p?.player_name) return;
       if(!winnings[p.player_name]) winnings[p.player_name]=0;
       winnings[p.player_name]+=parseFloat(p.amount)||0;
     });
     return Object.fromEntries(
       Object.entries(winnings)
+        .filter(([,v])=>v>0)
         .sort((a,b)=>b[1]-a[1])
         .slice(0,10)
         .map(([name],i)=>[name,i+1])
@@ -1957,7 +1960,7 @@ export default function App() {
                   }}>🎲 Redraw All 3</Btn>
                 </div>
                 <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:10}}>
-                  Each 6-hole segment has a <strong>separate random A+B draw</strong>. Lowest combined score wins each segment. {fmt$0(twoMbdPot/3||0)} per segment.
+                  Each 6-hole segment has a <strong>separate random A+B draw</strong>. Lowest combined score wins each segment. {fmt$0((payouts?.twoMbdPot||0)/3)} per segment.
                 </p>
                 {ohShitPlayer&&(
                   <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'7px 12px',marginBottom:12,fontSize:'0.78rem',color:C.red}}>
