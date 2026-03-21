@@ -166,19 +166,47 @@ const calcPayouts = (config,scores,ctp,pairings,hcMap,par,parTotal) => {
     holes:ssHoles,totalCarry:ssTotalCarry,perSkin:superSkinPot/(ssTot),
   };
 
-  // ── 2MBD ──────────────────────────────────────────────────
-  const teams=[];
-  (pairings||[]).forEach(grp=>grp.forEach(pair=>{
-    const bb=computeBestBall(scores,pair,par);
-    if(bb){const t=sumArr(bb.map((s,i)=>s>0?s:par[i]));teams.push({pair,total:t,scores:bb});}
-  }));
-  teams.sort((a,b)=>a.total-b.total);
+  // ── 2MBD — 3 separate 6-hole segments ────────────────────
+  // Each segment: holes 1-6, 7-12, 13-18
+  // Winner = lowest COMBINED score (p1_score + p2_score) per segment
+  // Payout: 1/3 of pot per segment, 1st place only
+  const segPot = twoMbdPot / 3;
+  const segHoles = [[0,6],[6,12],[12,18]]; // hole index ranges
+
+  const twoMbdSegments = [1,2,3].map(seg=>{
+    const segPairs = (pairings||[])
+      .filter(grp=>grp.segment===seg||(!grp.segment&&seg===1)) // fallback for old data
+      .flatMap(grp=>Array.isArray(grp)?grp:[grp]);
+
+    // Use config's segment pairings if available
+    const segKey = `mbd_seg${seg}`;
+    const segPairList = config[segKey] || [];
+
+    const [hStart,hEnd] = segHoles[seg-1];
+    const teams = segPairList.map(pair=>{
+      if(!pair||pair.length<2) return null;
+      const [p1,p2] = pair;
+      const sc1 = scores[p1]||[];
+      const sc2 = scores[p2]||[];
+      const s1 = sumArr(sc1.slice(hStart,hEnd).map((s,i)=>s>0?s:par[hStart+i]));
+      const s2 = sumArr(sc2.slice(hStart,hEnd).map((s,i)=>s>0?s:par[hStart+i]));
+      const played1 = sc1.slice(hStart,hEnd).filter(s=>s>0).length;
+      const played2 = sc2.slice(hStart,hEnd).filter(s=>s>0).length;
+      return {pair,p1score:s1,p2score:s2,combined:s1+s2,played:played1+played2};
+    }).filter(Boolean).sort((a,b)=>a.combined-b.combined);
+
+    return {
+      seg, label:`${seg===1?'1st':seg===2?'2nd':'3rd'} 6 (holes ${hStart+1}–${hEnd})`,
+      pot:segPot, teams, winner:teams[0]||null,
+      hStart, hEnd,
+    };
+  });
+
   const twoMbd={
     pot:twoMbdPot,
-    winner:teams[0]||null,runnerUp:teams[1]||null,
-    payFirst:twoMbdPot*0.6,paySecond:twoMbdPot*0.4,
+    segments:twoMbdSegments,
+    segPot,
     ohShitPlayer:oh_shit_player||null,
-    mbdPlayers,
   };
 
   return {totalPot,ctpPot,lowNetPot,skinsPot,twoMbdPot,superSkinPot,ctpPerHole,
@@ -371,6 +399,9 @@ export default function App() {
   const [draftSkinsFlights,setDraftSkinsFlights]=useState({A:[],B:[]}); // Skins A/B
   const [draftMbdFlights,setDraftMbdFlights]=useState({A:[],B:[]});     // 2MBD A/B
   const [ohShitPlayer,setOhShitPlayer]=useState(null);                   // sits out 2MBD
+  const [mbdSeg1,setMbdSeg1]=useState([]);  // pairs for holes 1-6
+  const [mbdSeg2,setMbdSeg2]=useState([]);  // pairs for holes 7-12
+  const [mbdSeg3,setMbdSeg3]=useState([]);  // pairs for holes 13-18
   const [draftGroups,setDraftGroups]=useState([]);                       // manual foursomes
   const [draftPairs,setDraftPairs]=useState([]);
   const [weeklyField,setWeeklyField]=useState([]);                        // players selected for this Sunday
@@ -580,6 +611,14 @@ export default function App() {
     return drawPairings(mbdA,mbdB);
   };
 
+  // Generate 3 independent segment draws (flat pair arrays)
+  const generateSegmentDraws = (mbdA, mbdB) => {
+    const pairs1 = drawPairings(mbdA,mbdB).flatMap(g=>g);
+    const pairs2 = drawPairings(mbdA,mbdB).flatMap(g=>g);
+    const pairs3 = drawPairings(mbdA,mbdB).flatMap(g=>g);
+    return [pairs1, pairs2, pairs3];
+  };
+
   const submitNewRound = async()=>{
     if(!newRound.date||!newRound.courseId||selectedPlayers.length<2) return;
     setSaving(true);
@@ -609,8 +648,9 @@ export default function App() {
         flight_c:newRound.numFlights===3?draftFlights.C:[],
         // Skins flights (A & B only)
         skins_a:draftSkinsFlights.A,skins_b:draftSkinsFlights.B,
-        // 2MBD flights (A & B only)
+        // 2MBD flights (A & B only) + 3 segment draws
         mbd_a:draftMbdFlights.A,mbd_b:draftMbdFlights.B,
+        mbd_seg1:mbdSeg1, mbd_seg2:mbdSeg2, mbd_seg3:mbdSeg3,
         oh_shit_player:ohShitPlayer||null,
         super_skin_players:[],odd_player:oddLowNet||null,
         foursomes:draftGroups,
@@ -621,6 +661,7 @@ export default function App() {
       setDraftSkinsFlights({A:[],B:[]});
       setDraftMbdFlights({A:[],B:[]});
       setOhShitPlayer(null);
+      setMbdSeg1([]);setMbdSeg2([]);setMbdSeg3([]);
       setDraftGroups([]);
       setDraftPairs([]);
       setNewRoundStep(1);setSelRound(rid);
@@ -1091,28 +1132,25 @@ export default function App() {
                   </div>
                 </Card>
                 <Card>
-                  <CardHead>🎲 2MBD — {fmt$0(payouts.twoMbdPot)} · A & B only</CardHead>
+                  <CardHead>🎲 2MBD — {fmt$0(payouts.twoMbdPot)} · 3 segments · {fmt$0(payouts.twoMbd.segPot)}/segment</CardHead>
                   <div style={{padding:'12px 16px'}}>
                     {payouts.twoMbd.ohShitPlayer&&(
                       <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'5px 10px',marginBottom:8,fontSize:'0.74rem',color:C.red}}>
-                        ⚠️ Oh Shit: <strong>{payouts.twoMbd.ohShitPlayer}</strong> sits this draw — refund their 2MBD portion
+                        ⚠️ Oh Shit: <strong>{payouts.twoMbd.ohShitPlayer}</strong> sits out — refund 2MBD
                       </div>
                     )}
-                    {payouts.twoMbd.winner?(
-                      <>
-                        <div style={{background:C.light,borderRadius:8,padding:'10px 14px',marginBottom:8,border:`1px solid ${C.border}`}}>
-                          <div style={{color:C.muted,fontSize:'0.66rem',marginBottom:3}}>🥇 1ST — {fmt$0(payouts.twoMbd.payFirst)}</div>
-                          <div style={{color:C.green,fontWeight:700}}>{payouts.twoMbd.winner.pair[0]} & {payouts.twoMbd.winner.pair[1]}</div>
-                          <div style={{color:C.muted,fontSize:'0.72rem',marginTop:2}}>Best ball: {payouts.twoMbd.winner.total} ({toPar(payouts.twoMbd.winner.total-parTotal)})</div>
-                        </div>
-                        {payouts.twoMbd.runnerUp&&(
-                          <div style={{background:C.bg,borderRadius:8,padding:'10px 14px',border:`1px solid ${C.border}`}}>
-                            <div style={{color:C.muted,fontSize:'0.66rem',marginBottom:3}}>🥈 2ND — {fmt$0(payouts.twoMbd.paySecond)}</div>
-                            <div style={{fontSize:'0.88rem'}}>{payouts.twoMbd.runnerUp.pair[0]} & {payouts.twoMbd.runnerUp.pair[1]}</div>
+                    {(payouts.twoMbd.segments||[]).map((seg,si)=>(
+                      <div key={si} style={{marginBottom:8,background:C.bg,borderRadius:6,padding:'8px 10px',border:`1px solid ${C.border}`}}>
+                        <div style={{color:C.muted,fontSize:'0.66rem',marginBottom:4,fontWeight:600}}>{seg.label} — {fmt$0(seg.pot)}</div>
+                        {seg.winner?(
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <span style={{color:C.green,fontWeight:700,fontSize:'0.85rem'}}>🏆 {seg.winner.pair[0]} & {seg.winner.pair[1]}</span>
+                            <span style={{fontFamily:"'DM Mono',monospace",color:C.green,fontWeight:700}}>{seg.winner.p1score}/{seg.winner.p2score}={seg.winner.combined}</span>
                           </div>
-                        )}
-                      </>
-                    ):<p style={{color:C.muted,fontSize:'0.8rem',margin:0}}>Scores in progress…</p>}
+                        ):<span style={{color:C.muted,fontSize:'0.75rem'}}>In progress…</span>}
+                      </div>
+                    ))}
+                    {!payouts.twoMbd.segments?.length&&<p style={{color:C.muted,fontSize:'0.8rem',margin:0}}>Scores in progress…</p>}
                   </div>
                 </Card>
               </div>
@@ -1303,52 +1341,62 @@ export default function App() {
         {view==='draw'&&(
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>🎲 2 Man Blind Draw</h2>
-            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>{round?.date} · A paired with B · Best ball · {fmt$0(payouts?.twoMbdPot||0)} pot</p>
-            {(!round?.pairings||round.pairings.length===0)&&(
+            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>
+              {round?.date} · 3 separate draws · Lowest combined score wins each segment · {fmt$0(payouts?.twoMbdPot||0)} total · {fmt$0(payouts?.twoMbd?.segPot||0)}/segment
+            </p>
+            {payouts?.twoMbd?.ohShitPlayer&&(
+              <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'7px 12px',marginBottom:14,fontSize:'0.78rem',color:C.red}}>
+                ⚠️ <strong>Oh Shit:</strong> <strong>{payouts.twoMbd.ohShitPlayer}</strong> sits out all 3 draws — refund their 2MBD portion
+              </div>
+            )}
+            {(!payouts?.twoMbd?.segments||!payouts.twoMbd.segments[0]?.teams?.length)&&(
               <Card style={{padding:40,textAlign:'center'}}><p style={{color:C.muted}}>No 2MBD draw yet — create a new round to generate pairings.</p></Card>
             )}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>
-              {(round?.pairings||[]).map((pairs,gi)=>{
-                if(!pairs||pairs.length===0) return null;
-                const teams=pairs.map(pair=>{
-                  if(!pair||pair.length<2) return {pair:pair||[],bestBall:null,played:0};
-                  const bb=computeBestBall(round.scores,pair,par);
-                  return {pair,bestBall:bb?sumArr(bb.map((s,i)=>s>0?s:par[i])):null,played:bb?bb.filter(s=>s>0).length:0};
-                });
-                const hasTwo = teams.length>=2 && teams[0]?.bestBall!=null && teams[1]?.bestBall!=null;
-                const w = hasTwo ? (teams[0].bestBall<teams[1].bestBall?0:teams[0].bestBall>teams[1].bestBall?1:-1) : null;
-                return (
-                  <Card key={gi}>
-                    <CardHead>2MBD Pair {gi+1}</CardHead>
-                    <div style={{padding:10,display:'flex',flexDirection:'column',gap:8}}>
-                      {teams.map((team,ti)=>(
-                        <div key={ti} style={{background:w===ti?C.light:C.bg,borderRadius:8,padding:'10px 14px',border:`1.5px solid ${w===ti?C.green:C.border}`}}>
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                            <div>
-                              <div style={{color:w===ti?C.green:C.muted,fontSize:'0.74rem',fontWeight:700,marginBottom:4}}>
-                                {w===ti?'🏆 ':''}{team.pair.filter(Boolean).join(' & ')||'—'}
-                              </div>
-                              <div style={{display:'flex',gap:6}}>
-                                {(team.pair||[]).filter(Boolean).map(n=>{
-                                  const f=round.config?.mbd_a?.includes(n)?'A':round.config?.mbd_b?.includes(n)?'B':round.config?.flight_a?.includes(n)?'A':'B';
-                                  return <FlightBadge key={n} f={f}/>;
-                                })}
-                              </div>
-                            </div>
-                            {team.bestBall!=null&&(
-                              <div style={{textAlign:'right'}}>
-                                <div style={{color:C.muted,fontSize:'0.62rem'}}>Best Ball ({team.played}H)</div>
-                                <div style={{color:w===ti?C.green:C.text,fontSize:'1.3rem',fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{team.bestBall}</div>
-                              </div>
-                            )}
+            <div style={{display:'flex',flexDirection:'column',gap:16}}>
+              {(payouts?.twoMbd?.segments||[]).map((seg,si)=>(
+                <Card key={si}>
+                  <CardHead>
+                    {seg.label}
+                    <span style={{color:C.muted,fontSize:'0.7rem',fontWeight:400,marginLeft:8}}>{fmt$0(seg.pot)} pot · lowest combined wins</span>
+                  </CardHead>
+                  <div style={{padding:12}}>
+                    {seg.winner&&(
+                      <div style={{background:C.light,border:`1.5px solid ${C.green}`,borderRadius:8,padding:'10px 14px',marginBottom:10}}>
+                        <div style={{color:C.muted,fontSize:'0.67rem',marginBottom:3}}>🏆 WINNER — {fmt$0(seg.pot)}</div>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <div style={{color:C.green,fontWeight:700,fontSize:'0.95rem'}}>
+                            {seg.winner.pair[0]} & {seg.winner.pair[1]}
+                          </div>
+                          <div style={{fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.green,fontSize:'1.1rem'}}>
+                            {seg.winner.p1score}/{seg.winner.p2score} = {seg.winner.combined}
                           </div>
                         </div>
-                      ))}
-                      {w===-1&&<p style={{textAlign:'center',color:C.muted,fontSize:'0.74rem',margin:0}}>🤝 Tied</p>}
+                      </div>
+                    )}
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6}}>
+                      {(seg.teams||[]).map((team,ti)=>{
+                        const isWinner=ti===0&&seg.winner;
+                        return (
+                          <div key={ti} style={{background:isWinner?C.light:C.bg,borderRadius:6,padding:'8px 10px',border:`1px solid ${isWinner?C.green:C.border}`}}>
+                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                              <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                                {(team.pair||[]).filter(Boolean).map(n=>{
+                                  const f=round?.config?.mbd_a?.includes(n)?'A':'B';
+                                  return <span key={n} style={{display:'flex',alignItems:'center',gap:3}}><FlightBadge f={f}/><span style={{fontSize:'0.8rem',fontWeight:600}}>{n}</span></span>;
+                                })}
+                              </div>
+                              <div style={{fontFamily:"'DM Mono',monospace",fontSize:'0.82rem',color:isWinner?C.green:C.muted,fontWeight:isWinner?700:400,textAlign:'right',whiteSpace:'nowrap',marginLeft:8}}>
+                                {team.played>0?`${team.p1score}/${team.p2score} = ${team.combined}`:'—'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </Card>
-                );
-              })}
+                    {!seg.teams?.length&&<p style={{color:C.muted,fontSize:'0.76rem',margin:0}}>Draw not yet generated</p>}
+                  </div>
+                </Card>
+              ))}
             </div>
           </div>
         )}
@@ -1532,6 +1580,8 @@ export default function App() {
                   const half=Math.floor(mbdActive.length/2);
                   const mbd={A:mbdActive.slice(0,half),B:mbdActive.slice(half)};
                   setDraftMbdFlights(mbd);
+                  const [s1,s2,s3]=generateSegmentDraws(mbd.A,mbd.B);
+                  setMbdSeg1(s1);setMbdSeg2(s2);setMbdSeg3(s3);
                   setDraftPairs(generateDraw(mbd.A,mbd.B));
                   setDraftGroups(autoGenerateGroups(selectedPlayers));
                   setNewRoundStep(2);
@@ -1757,47 +1807,62 @@ export default function App() {
             {newRoundStep===4&&(
               <Card style={{padding:20,marginBottom:14}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-                  <div style={{color:C.green,fontWeight:700}}>Step 4 — 2MBD Draw</div>
+                  <div style={{color:C.green,fontWeight:700}}>Step 4 — 2MBD Draws (3 Segments)</div>
                   <Btn small outline onClick={()=>{
                     const mbdActive=doOhShitDraw([...selectedPlayers].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0)));
                     const half=Math.floor(mbdActive.length/2);
                     const mbd={A:mbdActive.slice(0,half),B:mbdActive.slice(half)};
                     setDraftMbdFlights(mbd);
+                    const [s1,s2,s3]=generateSegmentDraws(mbd.A,mbd.B);
+                    setMbdSeg1(s1);setMbdSeg2(s2);setMbdSeg3(s3);
                     setDraftPairs(generateDraw(mbd.A,mbd.B));
-                  }}>🎲 Redraw</Btn>
+                  }}>🎲 Redraw All 3</Btn>
                 </div>
-                <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:12}}>
-                  Random A+B pairings — independent of foursomes. Partners can be in different groups on the course.
+                <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:10}}>
+                  Each 6-hole segment has a <strong>separate random A+B draw</strong>. Lowest combined score wins each segment. {fmt$0(twoMbdPot/3||0)} per segment.
                 </p>
                 {ohShitPlayer&&(
                   <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'7px 12px',marginBottom:12,fontSize:'0.78rem',color:C.red}}>
-                    ⚠️ <strong>Oh Shit Draw:</strong> <strong>{ohShitPlayer}</strong> sits out this 2MBD — refund their 2MBD portion
+                    ⚠️ <strong>Oh Shit:</strong> <strong>{ohShitPlayer}</strong> sits out all 3 draws — refund their 2MBD portion
                   </div>
                 )}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8,marginBottom:16}}>
-                  {draftPairs.map((grp,gi)=>(
-                    <div key={gi} style={{background:C.light,borderRadius:8,padding:10,border:`1px solid ${C.border}`}}>
-                      <div style={{fontSize:'0.7rem',fontWeight:700,color:C.muted,marginBottom:6}}>2MBD PAIR {gi+1}</div>
-                      {grp.map((pair,ti)=>(
-                        <div key={ti} style={{background:C.card,borderRadius:6,padding:'7px 10px',marginBottom:4,border:`1px solid ${C.border}`}}>
-                          <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                            {pair.filter(Boolean).map(n=>{
-                              const f=draftMbdFlights.A?.includes(n)?'A':'B';
-                              return (
-                                <span key={n} style={{display:'flex',alignItems:'center',gap:4}}>
-                                  <FlightBadge f={f}/>
-                                  <span style={{fontWeight:600,fontSize:'0.82rem'}}>{n}</span>
-                                  <span style={{color:C.muted,fontSize:'0.68rem'}}>HC{hcMap[n]??'?'}</span>
-                                </span>
-                              );
-                            })}
-                            {pair.filter(Boolean).length<2&&<span style={{color:C.red,fontSize:'0.72rem'}}>⚠ Solo</span>}
-                          </div>
+
+                {/* 3 segment draws */}
+                {[
+                  {label:'1st 6 — Holes 1–6',    seg:mbdSeg1, setSeg:setMbdSeg1},
+                  {label:'2nd 6 — Holes 7–12',   seg:mbdSeg2, setSeg:setMbdSeg2},
+                  {label:'3rd 6 — Holes 13–18',  seg:mbdSeg3, setSeg:setMbdSeg3},
+                ].map(({label,seg,setSeg},si)=>(
+                  <div key={si} style={{marginBottom:14}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                      <div style={{fontWeight:700,fontSize:'0.8rem',color:C.green}}>{label}</div>
+                      <Btn small outline onClick={()=>{
+                        const [s1,s2,s3]=generateSegmentDraws(draftMbdFlights.A,draftMbdFlights.B);
+                        if(si===0)setMbdSeg1(s1);
+                        if(si===1)setMbdSeg2(s2);
+                        if(si===2)setMbdSeg3(s3);
+                      }}>🔀 Redraw</Btn>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6}}>
+                      {seg.map((pair,pi)=>(
+                        <div key={pi} style={{background:C.light,borderRadius:6,padding:'8px 10px',border:`1px solid ${C.border}`,display:'flex',gap:8,alignItems:'center'}}>
+                          {(pair||[]).filter(Boolean).map(n=>{
+                            const f=draftMbdFlights.A?.includes(n)?'A':'B';
+                            return (
+                              <span key={n} style={{display:'flex',alignItems:'center',gap:4}}>
+                                <FlightBadge f={f}/>
+                                <span style={{fontWeight:600,fontSize:'0.8rem'}}>{n}</span>
+                                <span style={{color:C.muted,fontSize:'0.67rem'}}>HC{hcMap[n]??'?'}</span>
+                              </span>
+                            );
+                          })}
+                          {(pair||[]).filter(Boolean).length<2&&<span style={{color:C.red,fontSize:'0.72rem'}}>⚠ Solo</span>}
                         </div>
                       ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+
                 <div style={{display:'flex',gap:8}}>
                   <Btn outline onClick={()=>setNewRoundStep(3)}>← Back</Btn>
                   <Btn onClick={()=>setNewRoundStep(5)}>Next — Review →</Btn>
