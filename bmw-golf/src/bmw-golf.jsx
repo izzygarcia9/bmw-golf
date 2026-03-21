@@ -374,6 +374,7 @@ export default function App() {
   const [draftGroups,setDraftGroups]=useState([]);                       // manual foursomes
   const [draftPairs,setDraftPairs]=useState([]);
   const [weeklyField,setWeeklyField]=useState([]);                        // players selected for this Sunday
+  const [movingPlayer,setMovingPlayer]=useState(null);                    // player being moved between groups
   const [cfgEdit,setCfgEdit]=useState(null);
   const [addPlayerName,setAddPlayerName]=useState('');
   const [addPlayerHc,setAddPlayerHc]=useState('');
@@ -1302,31 +1303,39 @@ export default function App() {
         {view==='draw'&&(
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>🎲 2 Man Blind Draw</h2>
-            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>{round?.date} · A flight paired with B or C · Best ball · {fmt$0(payouts?.twoMbdPot||0)} pot</p>
+            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>{round?.date} · A paired with B · Best ball · {fmt$0(payouts?.twoMbdPot||0)} pot</p>
+            {(!round?.pairings||round.pairings.length===0)&&(
+              <Card style={{padding:40,textAlign:'center'}}><p style={{color:C.muted}}>No 2MBD draw yet — create a new round to generate pairings.</p></Card>
+            )}
             <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>
-              {round?.pairings?.map((pairs,gi)=>{
+              {(round?.pairings||[]).map((pairs,gi)=>{
+                if(!pairs||pairs.length===0) return null;
                 const teams=pairs.map(pair=>{
+                  if(!pair||pair.length<2) return {pair:pair||[],bestBall:null,played:0};
                   const bb=computeBestBall(round.scores,pair,par);
                   return {pair,bestBall:bb?sumArr(bb.map((s,i)=>s>0?s:par[i])):null,played:bb?bb.filter(s=>s>0).length:0};
                 });
-                const w=teams[0]?.bestBall&&teams[1]?.bestBall?(teams[0].bestBall<teams[1].bestBall?0:teams[0].bestBall>teams[1].bestBall?1:-1):null;
+                const hasTwo = teams.length>=2 && teams[0]?.bestBall!=null && teams[1]?.bestBall!=null;
+                const w = hasTwo ? (teams[0].bestBall<teams[1].bestBall?0:teams[0].bestBall>teams[1].bestBall?1:-1) : null;
                 return (
                   <Card key={gi}>
-                    <CardHead>Group {gi+1}</CardHead>
+                    <CardHead>2MBD Pair {gi+1}</CardHead>
                     <div style={{padding:10,display:'flex',flexDirection:'column',gap:8}}>
                       {teams.map((team,ti)=>(
                         <div key={ti} style={{background:w===ti?C.light:C.bg,borderRadius:8,padding:'10px 14px',border:`1.5px solid ${w===ti?C.green:C.border}`}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                             <div>
-                              <div style={{color:w===ti?C.green:C.muted,fontSize:'0.74rem',fontWeight:700,marginBottom:4}}>{w===ti?'🏆 ':''}{team.pair[0]} & {team.pair[1]}</div>
+                              <div style={{color:w===ti?C.green:C.muted,fontSize:'0.74rem',fontWeight:700,marginBottom:4}}>
+                                {w===ti?'🏆 ':''}{team.pair.filter(Boolean).join(' & ')||'—'}
+                              </div>
                               <div style={{display:'flex',gap:6}}>
-                                {team.pair.filter(Boolean).map(n=>{
-                                  const f=round.config?.flight_a?.includes(n)?'A':round.config?.flight_b?.includes(n)?'B':'C';
+                                {(team.pair||[]).filter(Boolean).map(n=>{
+                                  const f=round.config?.mbd_a?.includes(n)?'A':round.config?.mbd_b?.includes(n)?'B':round.config?.flight_a?.includes(n)?'A':'B';
                                   return <FlightBadge key={n} f={f}/>;
                                 })}
                               </div>
                             </div>
-                            {team.bestBall&&(
+                            {team.bestBall!=null&&(
                               <div style={{textAlign:'right'}}>
                                 <div style={{color:C.muted,fontSize:'0.62rem'}}>Best Ball ({team.played}H)</div>
                                 <div style={{color:w===ti?C.green:C.text,fontSize:'1.3rem',fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{team.bestBall}</div>
@@ -1653,7 +1662,6 @@ export default function App() {
                 </p>
 
                 {(()=>{
-                  const [movingPlayer, setMovingPlayer] = useState(null);
                   const allInGroups = draftGroups.flat();
                   const unassigned = selectedPlayers.filter(p=>!allInGroups.includes(p));
 
@@ -1670,7 +1678,6 @@ export default function App() {
 
                   const addGroup = () => setDraftGroups(prev=>[...prev,[]]);
                   const removeGroup = (gi) => {
-                    const freed = draftGroups[gi]||[];
                     setDraftGroups(prev=>prev.filter((_,i)=>i!==gi));
                   };
 
