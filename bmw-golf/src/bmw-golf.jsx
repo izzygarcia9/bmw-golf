@@ -1949,15 +1949,6 @@ export default function App() {
               <Card style={{padding:20,marginBottom:14}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
                   <div style={{color:C.green,fontWeight:700}}>Step 4 — 2MBD Draws (3 Segments)</div>
-                  <Btn small outline onClick={()=>{
-                    const mbdActive=doOhShitDraw([...selectedPlayers].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0)));
-                    const half=Math.floor(mbdActive.length/2);
-                    const mbd={A:mbdActive.slice(0,half),B:mbdActive.slice(half)};
-                    setDraftMbdFlights(mbd);
-                    const [s1,s2,s3]=generateSegmentDraws(mbd.A,mbd.B);
-                    setMbdSeg1(s1);setMbdSeg2(s2);setMbdSeg3(s3);
-                    setDraftPairs(generateDraw(mbd.A,mbd.B));
-                  }}>🎲 Redraw All 3</Btn>
                 </div>
                 <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:10}}>
                   Each 6-hole segment has a <strong>separate random A+B draw</strong>. Lowest combined score wins each segment. {fmt$0((payouts?.twoMbdPot||0)/3)} per segment.
@@ -1973,16 +1964,10 @@ export default function App() {
                   {label:'1st 6 — Holes 1–6',    seg:mbdSeg1, setSeg:setMbdSeg1},
                   {label:'2nd 6 — Holes 7–12',   seg:mbdSeg2, setSeg:setMbdSeg2},
                   {label:'3rd 6 — Holes 13–18',  seg:mbdSeg3, setSeg:setMbdSeg3},
-                ].map(({label,seg,setSeg},si)=>(
+                ].map(({label,seg},si)=>(
                   <div key={si} style={{marginBottom:14}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                    <div style={{marginBottom:6}}>
                       <div style={{fontWeight:700,fontSize:'0.8rem',color:C.green}}>{label}</div>
-                      <Btn small outline onClick={()=>{
-                        const [s1,s2,s3]=generateSegmentDraws(draftMbdFlights.A,draftMbdFlights.B);
-                        if(si===0)setMbdSeg1(s1);
-                        if(si===1)setMbdSeg2(s2);
-                        if(si===2)setMbdSeg3(s3);
-                      }}>🔀 Redraw</Btn>
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6}}>
                       {seg.map((pair,pi)=>(
@@ -2064,7 +2049,7 @@ export default function App() {
               :(()=>{
                 const cfg=cfgEdit||round.config;
                 const setC=(k,v)=>setCfgEdit(prev=>({...(prev||round.config),[k]:v}));
-                const allPlayers=Object.keys(round.scores||{});
+                const allPlayers=Object.keys(round.scores||{}).sort();
                 return (
                   <div>
                     <Card style={{marginBottom:14}}>
