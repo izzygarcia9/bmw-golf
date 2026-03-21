@@ -133,7 +133,8 @@ const calcPayouts = (config,scores,ctp,pairings,hcMap,par,parTotal) => {
   const skinsPot     = totalPot*pct_skins/100;
   const twoMbdPot    = totalPot*pct_2mbd/100;
   const superSkinPot = (super_skin_players||[]).length*(super_skin_fee||10);
-  const ctpPerHole   = ctpPot/3;
+  const par3Count    = (par||[]).filter(p=>p===3).length||3;
+  const ctpPerHole   = ctpPot/par3Count;
 
   // ── Low Net ────────────────────────────────────────────────
   const flightLowNet = {};
@@ -218,8 +219,8 @@ const calcPayouts = (config,scores,ctp,pairings,hcMap,par,parTotal) => {
 
 const assembleRound = (r,scores,ctps,pairings,configs,courses) => {
   const scoresMap = Object.fromEntries(scores.filter(s=>s.round_id===r.id).map(s=>[s.player_name,s.holes]));
-  const ctpObj = {h3:'',h6:'',h12:''};
-  ctps.filter(c=>c.round_id===r.id).forEach(c=>{ctpObj[c.hole_key]=c.player_name||'';});
+  const ctpObj = {};
+  ctps.filter(c=>c.round_id===r.id).forEach(c=>{ctpObj[c.hole_key]={player:c.player_name||'',distance:c.distance||''};});
   const rPairings=pairings.filter(p=>p.round_id===r.id);
   const groupNums=[...new Set(rPairings.map(p=>p.group_num))].sort((a,b)=>a-b);
   const pairStruct=groupNums.map(gn=>rPairings.filter(p=>p.group_num===gn).sort((a,b)=>a.team_num-b.team_num).map(p=>[p.player1,p.player2]));
@@ -521,9 +522,12 @@ export default function App() {
   const closeScoring = () => {setScoringPlayer(null);};
 
   // ── CTP ─────────────────────────────────────────────────
-  const saveCtp = async(key,val)=>{
+  const saveCtp = async(key, val, distance)=>{
     if(!round) return;
-    try{await sb(`ctp?round_id=eq.${round.id}&hole_key=eq.${key}`,'PATCH',{player_name:val});await loadAll(selRound,true);}
+    const patch = {};
+    if(val !== undefined) patch.player_name = val;
+    if(distance !== undefined) patch.distance = distance;
+    try{await sb(`ctp?round_id=eq.${round.id}&hole_key=eq.${key}`,'PATCH',patch);await loadAll(selRound,true);}
     catch(e){setErr(e.message);}
   };
 
@@ -541,10 +545,16 @@ export default function App() {
         payouts.flightLowNet[f].places.forEach((p,i)=>rows.push({round_id:round.id,player_name:p.name,category:`low_net_${f.toLowerCase()}`,amount:p.payout,place:i+1}));
         (payouts.flightSkins[f]?.winners||[]).forEach(w=>rows.push({round_id:round.id,player_name:w.name,category:`skins_${f.toLowerCase()}`,amount:w.payout,place:1}));
       });
-      if(payouts.twoMbd.winner) rows.push({round_id:round.id,player_name:payouts.twoMbd.winner.pair.join(' & '),category:'2mbd_1st',amount:payouts.twoMbd.payFirst,place:1});
-      if(payouts.twoMbd.runnerUp) rows.push({round_id:round.id,player_name:payouts.twoMbd.runnerUp.pair.join(' & '),category:'2mbd_2nd',amount:payouts.twoMbd.paySecond,place:2});
+      // 2MBD segments
+      (payouts.twoMbd.segments||[]).forEach((seg,i)=>{
+        if(seg.winner) rows.push({round_id:round.id,player_name:seg.winner.pair.join(' & '),category:`2mbd_seg${i+1}`,amount:seg.pot,place:1});
+      });
       payouts.superSkins.winners.forEach(w=>rows.push({round_id:round.id,player_name:w.name,category:'super_skins',amount:w.payout,place:1}));
-      ['h3','h6','h12'].forEach(k=>{if(round.ctp[k]) rows.push({round_id:round.id,player_name:round.ctp[k],category:`ctp_${k}`,amount:payouts.ctpPerHole,place:1});});
+      // CTP — all par 3s
+      Object.entries(round.ctp||{}).forEach(([k,entry])=>{
+        const winner=typeof entry==='object'?entry.player:entry;
+        if(winner) rows.push({round_id:round.id,player_name:winner,category:`ctp_${k}`,amount:payouts.ctpPerHole,place:1});
+      });
       if(rows.length) await sb('payouts','POST',rows);
       await loadAll(selRound);
     } catch(e){setErr(e.message);}
@@ -654,8 +664,11 @@ export default function App() {
       if(pairRows.length) await sb('pairings','POST',pairRows);
       // Store foursomes in round_config as groups json
       const foursomesJson = JSON.stringify(draftGroups);
-      // CTP
-      await sb('ctp','POST',[{round_id:rid,hole_key:'h3',player_name:''},{round_id:rid,hole_key:'h6',player_name:''},{round_id:rid,hole_key:'h12',player_name:''}]);
+      // CTP — create rows for every par 3 on the course
+      const courseForRound = ALAMO_COURSES.find(a=>a.name===dbCourses.find(c=>c.id===Number(newRound.courseId))?.name);
+      const coursePar = courseForRound?.holes_par || [4,4,3,4,5,3,4,4,5,4,4,3,4,4,4,4,4,5];
+      const par3Keys = coursePar.map((p,i)=>p===3?`h${i+1}`:null).filter(Boolean);
+      await sb('ctp','POST', par3Keys.map(key=>({round_id:rid, hole_key:key, player_name:'', distance:''})));
       // Config — save all flight data separately
       const oddLowNet=selectedPlayers.length%3!==0&&newRound.numFlights===3?draftFlights.C[draftFlights.C.length-1]:null;
       await sb('round_config','POST',{
@@ -1149,27 +1162,46 @@ export default function App() {
               {/* CTP + 2MBD */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <Card>
-                  <CardHead>📍 Closest to Pin — {fmt$0(payouts.ctpPot)}</CardHead>
+                  <CardHead>📍 Closest to Pin — {fmt$0(payouts.ctpPot)} · {fmt$0(payouts.ctpPerHole)}/hole</CardHead>
                   <div style={{padding:'12px 16px'}}>
-                    {[{label:'Hole 3 (Par 3)',key:'h3'},{label:'Hole 6 (Par 3)',key:'h6'},{label:'Hole 12 (Par 3)',key:'h12'}].map(({label,key})=>(
-                      <div key={key} style={{marginBottom:10}}>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-                          <span style={{color:C.muted,fontSize:'0.72rem'}}>{label}</span>
-                          <span style={{color:C.gold,fontWeight:600,fontSize:'0.72rem'}}>{fmt$0(payouts.ctpPerHole)}</span>
-                        </div>
-                        {adminMode?(
-                          <select value={round?.ctp?.[key]||''} onChange={e=>saveCtp(key,e.target.value)}
-                            style={{width:'100%',border:`1px solid ${C.border}`,borderRadius:5,padding:'5px 8px',fontSize:'0.78rem'}}>
-                            <option value=''>— Select winner —</option>
-                            {Object.keys(round?.scores||{}).sort().map(n=><option key={n} value={n}>{n}</option>)}
-                          </select>
-                        ):(
-                          <div style={{color:round?.ctp?.[key]?C.green:C.muted,fontSize:'0.82rem',fontWeight:round?.ctp?.[key]?700:400}}>
-                            {round?.ctp?.[key]?`🏆 ${round.ctp[key]}`:'Not yet determined'}
+                    {par3Idx.length===0&&<p style={{color:C.muted,fontSize:'0.76rem',margin:0}}>No par 3s found for this course.</p>}
+                    {par3Idx.map(holeIdx=>{
+                      const key=`h${holeIdx+1}`;
+                      const ctpEntry=round?.ctp?.[key]||{};
+                      const winner = typeof ctpEntry==='object' ? ctpEntry.player : ctpEntry;
+                      const distance = typeof ctpEntry==='object' ? ctpEntry.distance : '';
+                      const allInRound=Object.keys(round?.scores||{}).sort();
+                      return (
+                        <div key={key} style={{marginBottom:12,background:C.light,borderRadius:7,padding:'9px 12px',border:`1px solid ${winner?C.green:C.border}`}}>
+                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                            <span style={{fontWeight:700,fontSize:'0.8rem',color:C.green}}>Hole {holeIdx+1} — Par 3</span>
+                            <span style={{color:C.gold,fontWeight:700,fontSize:'0.75rem',fontFamily:"'DM Mono',monospace"}}>{fmt$0(payouts.ctpPerHole)}</span>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {/* Player selector — open to all when live */}
+                          <select defaultValue={winner||''} onBlur={e=>saveCtp(key,e.target.value,undefined)}
+                            onChange={e=>saveCtp(key,e.target.value,undefined)}
+                            style={{width:'100%',border:`1px solid ${C.border}`,borderRadius:5,padding:'5px 8px',fontSize:'0.78rem',marginBottom:6,background:winner?'#dcfce7':C.card}}>
+                            <option value=''>— Tap to claim CTP —</option>
+                            {allInRound.map(n=><option key={n} value={n}>{n}</option>)}
+                          </select>
+                          {/* Distance input */}
+                          <div style={{display:'flex',alignItems:'center',gap:6}}>
+                            <input
+                              defaultValue={distance||''}
+                              placeholder="Distance (e.g. 4'2&quot;)"
+                              onBlur={e=>saveCtp(key,undefined,e.target.value)}
+                              style={{flex:1,border:`1px solid ${C.border}`,borderRadius:5,padding:'4px 8px',fontSize:'0.76rem',background:C.card}}
+                            />
+                            <span style={{color:C.muted,fontSize:'0.68rem',whiteSpace:'nowrap'}}>from pin</span>
+                          </div>
+                          {winner&&(
+                            <div style={{marginTop:5,color:C.green,fontSize:'0.78rem',fontWeight:700}}>
+                              🏆 {winner}{distance?` · ${distance}`:''}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </Card>
                 <Card>
@@ -2049,7 +2081,11 @@ export default function App() {
               :(()=>{
                 const cfg=cfgEdit||round.config;
                 const setC=(k,v)=>setCfgEdit(prev=>({...(prev||round.config),[k]:v}));
-                const allPlayers=Object.keys(round.scores||{}).sort();
+                const allPlayers=[
+                  ...(cfg.flight_a||[]),
+                  ...(cfg.flight_b||[]),
+                  ...(cfg.flight_c||[]),
+                ].filter(Boolean).sort();
                 return (
                   <div>
                     <Card style={{marginBottom:14}}>
