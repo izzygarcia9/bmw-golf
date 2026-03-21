@@ -506,6 +506,24 @@ export default function App() {
     } catch(e){ setErr('Reset failed: '+e.message); }
     setSaving(false);
   };
+
+  const deleteRound = async()=>{
+    if(!round) return;
+    const pw = window.prompt('Enter admin password to delete this round:');
+    if(pw!==ADMIN_PW){ setErr('Wrong password — round not deleted.'); return; }
+    if(!window.confirm(`PERMANENTLY DELETE round: ${round.date} at ${round.course?.name}?\n\nThis will delete ALL scores, pairings, and payouts for this round.`)) return;
+    setSaving(true);
+    try {
+      // Cascade delete — Supabase will handle child tables via ON DELETE CASCADE
+      await sb(`rounds?id=eq.${round.id}`,'DELETE');
+      // Switch to next available round
+      const remaining = rounds.filter(r=>r.id!==round.id);
+      setSelRound(remaining.length?remaining[0].id:null);
+      await loadAll(remaining.length?remaining[0].id:null);
+      setView('groups');
+    } catch(e){ setErr('Delete failed: '+e.message); }
+    setSaving(false);
+  };
   const autoAssignFlights = (selected,numFlights) => {
     const sorted=[...selected].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0));
     const n=sorted.length;
@@ -852,6 +870,9 @@ export default function App() {
                   <Btn outline color={C.red} onClick={resetScores}>🗑️ Reset Scores</Btn>
                   <Btn color={C.red} onClick={lockRound}>🔒 Lock Scoring</Btn>
                 </div>
+              )}
+              {adminMode&&(
+                <Btn outline color={C.red} small onClick={deleteRound}>🗑 Delete Round</Btn>
               )}
             </div>
 
