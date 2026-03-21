@@ -222,25 +222,35 @@ const calcGHINHandicap = (differentials) => {
   return Math.floor(avg * 0.96 * 10) / 10;
 };
 
-const drawPairings = (flightA,flightB,flightC,numFlights) => {
-  const sA  = [...(flightA||[])].sort(()=>Math.random()-.5);
-  const sBC = [...(flightB||[]),...(numFlights===3?(flightC||[]):[])].sort(()=>Math.random()-.5);
+// True random shuffle using Fisher-Yates algorithm
+const shuffle = arr => {
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+};
+
+const drawPairings = (flightA,flightB) => {
+  const sA  = shuffle(flightA||[]);
+  const sB  = shuffle(flightB||[]);
   const pairs = [];
-  // First: pair each A with one B/C
-  const min = Math.min(sA.length, sBC.length);
-  for(let i=0;i<min;i++) pairs.push([sA[i], sBC[i]]);
-  // Leftover A players — pair them together (A+A better than solo)
+  // Pair each A with one B
+  const min = Math.min(sA.length, sB.length);
+  for(let i=0;i<min;i++) pairs.push([sA[i], sB[i]]);
+  // Leftover A players — pair together
   const remA = sA.slice(min);
   for(let i=0;i<remA.length;i+=2)
-    pairs.push(remA[i+1] ? [remA[i],remA[i+1]] : [remA[i], sBC[sBC.length-1]||'']);
-  // Leftover B/C players — pair them together (B+C better than solo)
-  const remBC = sBC.slice(min);
-  for(let i=0;i<remBC.length;i+=2)
-    pairs.push(remBC[i+1] ? [remBC[i],remBC[i+1]] : [remBC[i], remA[remA.length-1]||'']);
+    pairs.push(remA[i+1]?[remA[i],remA[i+1]]:[remA[i],sB[sB.length-1]||'']);
+  // Leftover B players — pair together
+  const remB = sB.slice(min);
+  for(let i=0;i<remB.length;i+=2)
+    pairs.push(remB[i+1]?[remB[i],remB[i+1]]:[remB[i],remA[remA.length-1]||'']);
   // Group into foursomes (2 pairs per group)
   const groups=[];
   for(let i=0;i<pairs.length;i+=2)
-    groups.push(pairs[i+1] ? [pairs[i],pairs[i+1]] : [pairs[i]]);
+    groups.push(pairs[i+1]?[pairs[i],pairs[i+1]]:[pairs[i]]);
   return groups;
 };
 
@@ -557,7 +567,7 @@ export default function App() {
   };
 
   const autoGenerateGroups = (selected) => {
-    const shuffled = [...selected].sort(()=>Math.random()-.5);
+    const shuffled = shuffle(selected);
     const groups = [];
     for(let i=0;i<shuffled.length;i+=4)
       groups.push(shuffled.slice(i,Math.min(i+4,shuffled.length)));
@@ -565,7 +575,7 @@ export default function App() {
   };
 
   const generateDraw = (mbdA,mbdB) => {
-    return drawPairings(mbdA,mbdB,[],2);
+    return drawPairings(mbdA,mbdB);
   };
 
   const submitNewRound = async()=>{
