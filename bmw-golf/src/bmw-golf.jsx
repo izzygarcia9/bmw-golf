@@ -1976,8 +1976,7 @@ export default function App() {
             {/* Weekly field selector */}
             <Card style={{marginBottom:14}}>
               <CardHead>
-                This Sunday's Field
-                {right: <span style={{color:C.muted,fontSize:'0.72rem',fontWeight:400}}>{weeklyField.length} selected</span>}
+                This Sunday's Field — {weeklyField.length} selected
               </CardHead>
               <div style={{padding:14}}>
                 <p style={{color:C.muted,fontSize:'0.76rem',marginBottom:12,marginTop:0}}>
