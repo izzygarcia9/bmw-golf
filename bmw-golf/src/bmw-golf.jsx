@@ -373,6 +373,7 @@ export default function App() {
   const [ohShitPlayer,setOhShitPlayer]=useState(null);                   // sits out 2MBD
   const [draftGroups,setDraftGroups]=useState([]);                       // manual foursomes
   const [draftPairs,setDraftPairs]=useState([]);
+  const [weeklyField,setWeeklyField]=useState([]);                        // players selected for this Sunday
   const [cfgEdit,setCfgEdit]=useState(null);
   const [addPlayerName,setAddPlayerName]=useState('');
   const [addPlayerHc,setAddPlayerHc]=useState('');
@@ -1489,7 +1490,11 @@ export default function App() {
 
                 <div style={{marginBottom:12}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                    <label style={{color:C.muted,fontSize:'0.72rem'}}>Select Players ({selectedPlayers.length} selected) — sorted by handicap</label>
+                    <label style={{color:C.muted,fontSize:'0.72rem'}}>
+                      Select Players ({selectedPlayers.length} selected) — sorted by handicap
+                      {weeklyField.length>0&&selectedPlayers.length===weeklyField.length&&
+                        <span style={{color:C.green,marginLeft:8}}>✓ Pre-loaded from Roster</span>}
+                    </label>
                     <div style={{display:'flex',gap:6}}>
                       <button onClick={()=>setSelectedPlayers(players.map(p=>p.name))} style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'3px 10px',fontSize:'0.72rem',cursor:'pointer',color:C.text}}>Select All</button>
                       <button onClick={()=>setSelectedPlayers([])} style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'3px 10px',fontSize:'0.72rem',cursor:'pointer',color:C.text}}>Clear</button>
@@ -1915,17 +1920,16 @@ export default function App() {
         {view==='roster'&&adminMode&&(
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>👥 Player Roster</h2>
-            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:12}}>
-              {players.length} players · Click HC to edit · HC auto-updates using GHIN method after each locked round
-            </p>
-            {/* GHIN HC update button */}
+            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:14}}>{players.length} players in season roster · Sorted by handicap</p>
+
+            {/* GHIN HC update */}
             {rounds.filter(r=>r.status==='locked').length>0&&(
               <Card style={{marginBottom:14,border:`1px solid ${C.green}40`}}>
                 <div style={{padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <div>
                     <div style={{fontWeight:600,fontSize:'0.85rem',color:C.green}}>🧮 GHIN Handicap Calculator</div>
                     <div style={{color:C.muted,fontSize:'0.72rem',marginTop:2}}>
-                      Calculates score differentials from all locked rounds using WHS formula: (Gross − CR) × 113 / Slope × 0.96
+                      WHS formula: (Gross − CR) × 113 / Slope × 0.96 · Run manually when ready
                     </div>
                   </div>
                   <Btn small onClick={async()=>{
@@ -1943,42 +1947,126 @@ export default function App() {
                         });
                         if(!diffs.length) continue;
                         const newHc=calcGHINHandicap(diffs);
-                        if(newHc!==null&&Math.round(newHc)!==player.hc){
+                        if(newHc!==null&&Math.round(newHc)!==player.hc)
                           await sb(`players?id=eq.${player.id}`,'PATCH',{hc:Math.round(newHc)});
-                        }
                       }
                       await loadAll(selRound);
                     } catch(e){setErr(e.message);}
                     setSaving(false);
-                  }}>
-                    {saving?'Updating…':'Update All HCs'}
-                  </Btn>
+                  }}>{saving?'Updating…':'Update All HCs'}</Btn>
                 </div>
               </Card>
             )}
+
+            {/* Add new player to season roster */}
             <Card style={{marginBottom:14}}>
-              <CardHead>Add Player</CardHead>
+              <CardHead>Add New Player to Season Roster</CardHead>
               <div style={{padding:14,display:'flex',gap:10,flexWrap:'wrap'}}>
-                <input defaultValue={addPlayerName} onBlur={e=>setAddPlayerName(e.target.value)} placeholder="Full name"
+                <input defaultValue={addPlayerName} onBlur={e=>setAddPlayerName(e.target.value)}
+                  placeholder="Full name (adds permanently to roster)"
                   onKeyDown={e=>e.key==='Enter'&&addPlayer()}
-                  style={{flex:2,minWidth:160,border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
-                <input type="number" defaultValue={addPlayerHc} onBlur={e=>setAddPlayerHc(e.target.value)} placeholder="HC"
-                  onKeyDown={e=>e.key==='Enter'&&addPlayer()}
+                  style={{flex:2,minWidth:200,border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
+                <input type="number" defaultValue={addPlayerHc} onBlur={e=>setAddPlayerHc(e.target.value)}
+                  placeholder="HC" onKeyDown={e=>e.key==='Enter'&&addPlayer()}
                   style={{flex:1,minWidth:70,border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
-                <Btn onClick={addPlayer} disabled={saving}>Add</Btn>
+                <Btn onClick={addPlayer} disabled={saving}>Add to Roster</Btn>
               </div>
             </Card>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
-              {[...players].sort((a,b)=>a.hc-b.hc).map(p=>(
-                <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'9px 13px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,boxShadow:'0 1px 2px rgba(0,0,0,0.04)'}}>
-                  <span style={{fontSize:'0.82rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:500}}>{p.name}</span>
-                  <input type="number" defaultValue={p.hc} min="0" max="54"
-                    onBlur={async e=>{if(Number(e.target.value)!==p.hc){try{await sb(`players?id=eq.${p.id}`,'PATCH',{hc:Number(e.target.value)});await loadAll(selRound,true);}catch(e2){setErr(e2.message);}}}}
-                    onKeyDown={async e=>{if(e.key==='Enter'){try{await sb(`players?id=eq.${p.id}`,'PATCH',{hc:Number(e.target.value)});await loadAll(selRound,true);}catch(e2){setErr(e2.message);}}}}
-                    style={{width:54,border:`1.5px solid ${C.border}`,borderRadius:4,padding:'3px 6px',fontSize:'0.8rem',fontFamily:"'DM Mono',monospace",textAlign:'center',color:C.green,fontWeight:700}}/>
+
+            {/* Weekly field selector */}
+            <Card style={{marginBottom:14}}>
+              <CardHead>
+                This Sunday's Field
+                {right: <span style={{color:C.muted,fontSize:'0.72rem',fontWeight:400}}>{weeklyField.length} selected</span>}
+              </CardHead>
+              <div style={{padding:14}}>
+                <p style={{color:C.muted,fontSize:'0.76rem',marginBottom:12,marginTop:0}}>
+                  Tap players to add/remove them from this Sunday's field. Then click <strong>Build Round</strong> to set up foursomes.
+                </p>
+
+                {/* Quick select buttons */}
+                <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+                  <button onClick={()=>setWeeklyField(players.map(p=>p.name))}
+                    style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'4px 12px',fontSize:'0.74rem',cursor:'pointer',color:C.text}}>
+                    Select All ({players.length})
+                  </button>
+                  <button onClick={()=>setWeeklyField([])}
+                    style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'4px 12px',fontSize:'0.74rem',cursor:'pointer',color:C.text}}>
+                    Clear
+                  </button>
+                  {weeklyField.length>0&&(
+                    <span style={{color:C.green,fontSize:'0.74rem',padding:'4px 0',fontWeight:600}}>
+                      ✓ {weeklyField.length} players selected
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
+
+                {/* Player grid — tap to select */}
+                <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
+                  {[...players].sort((a,b)=>a.hc-b.hc).map(p=>{
+                    const sel=weeklyField.includes(p.name);
+                    return (
+                      <button key={p.id}
+                        onClick={()=>setWeeklyField(prev=>sel?prev.filter(n=>n!==p.name):[...prev,p.name])}
+                        style={{
+                          background:sel?C.green:C.card,
+                          color:sel?'#fff':C.text,
+                          border:`1.5px solid ${sel?C.green:C.border}`,
+                          borderRadius:8,padding:'8px 14px',
+                          cursor:'pointer',fontWeight:sel?600:400,
+                          display:'flex',alignItems:'center',gap:8,
+                          transition:'all .12s',
+                          boxShadow:sel?'0 2px 6px rgba(30,92,40,0.25)':'none',
+                        }}>
+                        <div style={{textAlign:'left'}}>
+                          <div style={{fontSize:'0.85rem'}}>{p.name}</div>
+                          <div style={{fontSize:'0.68rem',opacity:0.75}}>HC {p.hc}</div>
+                        </div>
+                        {sel&&<span style={{fontSize:'0.8rem'}}>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Build Round button */}
+                <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{color:C.muted,fontSize:'0.76rem'}}>
+                    {weeklyField.length<4
+                      ?'Select at least 4 players to build a round'
+                      :`${weeklyField.length} players · ${Math.floor(weeklyField.length/4)} full groups`
+                    }
+                  </div>
+                  <Btn
+                    disabled={weeklyField.length<4}
+                    onClick={()=>{
+                      setSelectedPlayers(weeklyField);
+                      setView('newround');
+                      setNewRoundStep(1);
+                    }}>
+                    Build Round with {weeklyField.length} Players →
+                  </Btn>
+                </div>
+              </div>
+            </Card>
+
+            {/* Season roster — edit HCs */}
+            <Card>
+              <CardHead>Season Roster — Edit Handicaps</CardHead>
+              <div style={{padding:12,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+                {[...players].sort((a,b)=>a.hc-b.hc).map(p=>(
+                  <div key={p.id} style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:7,padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                    <div>
+                      <div style={{fontSize:'0.82rem',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                      {weeklyField.includes(p.name)&&<div style={{fontSize:'0.62rem',color:C.green,fontWeight:600}}>✓ In Sunday's field</div>}
+                    </div>
+                    <input type="number" defaultValue={p.hc} min="0" max="54"
+                      onBlur={async e=>{if(Number(e.target.value)!==p.hc){try{await sb(`players?id=eq.${p.id}`,'PATCH',{hc:Number(e.target.value)});await loadAll(selRound,true);}catch(e2){setErr(e2.message);}}}}
+                      onKeyDown={async e=>{if(e.key==='Enter'){try{await sb(`players?id=eq.${p.id}`,'PATCH',{hc:Number(e.target.value)});await loadAll(selRound,true);}catch(e2){setErr(e2.message);}}}}
+                      style={{width:52,border:`1.5px solid ${C.border}`,borderRadius:4,padding:'3px 6px',fontSize:'0.8rem',fontFamily:"'DM Mono',monospace",textAlign:'center',color:C.green,fontWeight:700,flexShrink:0}}/>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
