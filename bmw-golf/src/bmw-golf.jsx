@@ -452,6 +452,21 @@ export default function App() {
   const isLive=round?.status==='live';
   const isLocked=round?.status==='locked';
 
+  // Season rank map — top 10 by total winnings, shown as gold badge in groups
+  const seasonRankMap=useMemo(()=>{
+    const winnings={};
+    payoutsHistory.forEach(p=>{
+      if(!winnings[p.player_name]) winnings[p.player_name]=0;
+      winnings[p.player_name]+=parseFloat(p.amount)||0;
+    });
+    return Object.fromEntries(
+      Object.entries(winnings)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,10)
+        .map(([name],i)=>[name,i+1])
+    );
+  },[payoutsHistory]);
+
   const payouts=useMemo(()=>round?calcPayouts(round.config,round.scores,round.ctp,round.pairings,hcMap,par,parTotal):null,[round,players]);
 
   const flightedLB=useMemo(()=>{
@@ -965,7 +980,20 @@ export default function App() {
                           <div style={{display:'flex',alignItems:'center',gap:8}}>
                             <FlightBadge f={flight}/>
                             <div>
-                              <div style={{fontWeight:600,fontSize:'0.9rem'}}>{name}</div>
+                              <div style={{fontWeight:600,fontSize:'0.9rem',display:'flex',alignItems:'center',gap:6}}>
+                                {name}
+                                {seasonRankMap[name]&&(
+                                  <span style={{
+                                    background:seasonRankMap[name]===1?C.gold:seasonRankMap[name]<=3?'#b8860b':'#7a6a30',
+                                    color:'#fff',borderRadius:4,
+                                    padding:'1px 6px',fontSize:'0.62rem',
+                                    fontWeight:700,fontFamily:"'DM Mono',monospace",
+                                    letterSpacing:'0.03em',flexShrink:0,
+                                  }}>
+                                    #{seasonRankMap[name]}
+                                  </span>
+                                )}
+                              </div>
                               <div style={{color:C.muted,fontSize:'0.67rem'}}>
                                 HC {hcMap[name]??'?'}
                                 {mbdPartner&&<span style={{marginLeft:6,color:C.gold}}>2MBD w/ {mbdPartner}</span>}
@@ -1011,19 +1039,29 @@ export default function App() {
 
             {payouts&&(<>
               {/* Pot summary */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:16}}>
                 {[
-                  {icon:'📍',label:'CTP',        pot:payouts.ctpPot,    sub:`${fmt$0(payouts.ctpPerHole)}/hole`},
-                  {icon:'🏅',label:'Low Net',    pot:payouts.lowNetPot, sub:`${fmt$0(payouts.lowNetPot/(payouts.lowNetFlights?.length||2))}/flight`},
-                  {icon:'🎯',label:'Skins',      pot:payouts.skinsPot,  sub:`${fmt$0(payouts.skinsPot/2)}/flight · A&B only`},
-                  {icon:'🎲',label:'2MBD',       pot:payouts.twoMbdPot, sub:'60% / 40% · A&B only'},
+                  {icon:'📍',label:'CTP',          pot:payouts.ctpPot,         sub:`${fmt$0(payouts.ctpPerHole)}/hole`,         super:false},
+                  {icon:'🏅',label:'Low Net',      pot:payouts.lowNetPot,      sub:`${fmt$0(payouts.lowNetPot/(payouts.lowNetFlights?.length||2))}/flight`, super:false},
+                  {icon:'🎯',label:'Skins',        pot:payouts.skinsPot,       sub:`${fmt$0(payouts.skinsPot/2)}/flight · A&B`,  super:false},
+                  {icon:'🎲',label:'2MBD',         pot:payouts.twoMbdPot,      sub:`${fmt$0(payouts.twoMbd?.segPot||0)}/segment`, super:false},
+                  {icon:null, label:'Super Skins', pot:payouts.superSkinPot,   sub:`${(payouts.superSkins?.players||[]).length} players opted in`, super:true},
                 ].map(x=>(
-                  <Card key={x.label}>
+                  <Card key={x.label} style={x.super?{background:'#1a3a0e',border:`2px solid ${C.gold}`}:{}}>
                     <div style={{padding:'14px',textAlign:'center'}}>
-                      <div style={{fontSize:'1.2rem',marginBottom:4}}>{x.icon}</div>
-                      <div style={{color:C.muted,fontSize:'0.65rem',letterSpacing:'0.07em',textTransform:'uppercase',marginBottom:3}}>{x.label}</div>
+                      {x.super?(
+                        /* Custom Super Skins icon — gold S bolt */
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{margin:'0 auto 4px',display:'block'}}>
+                          <circle cx="14" cy="14" r="13" fill="#b8860b"/>
+                          <polygon points="14,3 17,10 24,8 18,15 22,25 14,19 6,25 10,15 4,8 11,10" fill="#f0e8c8" stroke="#7a5c08" strokeWidth="0.5"/>
+                          <text x="14" y="18" textAnchor="middle" fill="#1a3a0e" fontFamily="Georgia,serif" fontSize="10" fontWeight="900">SS</text>
+                        </svg>
+                      ):(
+                        <div style={{fontSize:'1.2rem',marginBottom:4}}>{x.icon}</div>
+                      )}
+                      <div style={{color:x.super?'#f0e8c8':C.muted,fontSize:'0.65rem',letterSpacing:'0.07em',textTransform:'uppercase',marginBottom:3,fontWeight:x.super?700:400}}>{x.label}</div>
                       <div style={{color:C.gold,fontWeight:800,fontSize:'1.3rem',fontFamily:"'DM Mono',monospace"}}>{fmt$0(x.pot)}</div>
-                      <div style={{color:C.muted,fontSize:'0.64rem',marginTop:3}}>{x.sub}</div>
+                      <div style={{color:x.super?'#86efac':C.muted,fontSize:'0.64rem',marginTop:3}}>{x.sub}</div>
                     </div>
                   </Card>
                 ))}
@@ -1405,49 +1443,149 @@ export default function App() {
         {view==='season'&&(
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>📊 Season Standings</h2>
-            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>{rounds.filter(r=>r.status==='locked').length} completed rounds</p>
-            <Card>
-              <div style={{overflowX:'auto'}}>
-                <table style={{width:'100%',borderCollapse:'collapse',fontFamily:"'DM Mono',monospace",fontSize:'0.8rem'}}>
-                  <thead><tr style={{background:C.card2,borderBottom:`1px solid ${C.border}`}}>
-                    {['#','Player','HC','Rds','Avg Gross','Avg Net','Total Winnings'].map(h=>(
-                      <th key={h} style={{padding:'9px 11px',color:C.muted,fontWeight:500,textAlign:h==='Player'?'left':'center',fontSize:'0.69rem'}}>{h}</th>
-                    ))}
-                  </tr></thead>
-                  <tbody>
-                    {(()=>{
-                      const stats={};
-                      rounds.filter(r=>r.status==='locked').forEach(r=>{
-                        const rPar=r.par||par;
-                        Object.entries(r.scores||{}).forEach(([name,sc])=>{
-                          if(!stats[name]) stats[name]={name,rounds:0,totalGross:0,totalNet:0};
-                          const gross=sumArr(sc.map((s,i)=>s>0?s:rPar[i]));
-                          stats[name].rounds++;
-                          stats[name].totalGross+=gross;
-                          stats[name].totalNet+=gross-(hcMap[name]??0);
-                        });
-                      });
-                      const winnings={};
-                      payoutsHistory.forEach(p=>{
-                        if(!winnings[p.player_name]) winnings[p.player_name]=0;
-                        winnings[p.player_name]+=parseFloat(p.amount)||0;
-                      });
-                      return Object.values(stats).sort((a,b)=>(a.totalNet/a.rounds)-(b.totalNet/b.rounds)).map((p,i)=>(
-                        <tr key={p.name} style={{borderBottom:`1px solid ${C.border}`,background:i===0?C.light:i%2===0?C.bg:C.card}}>
-                          <td style={{padding:'8px 11px',textAlign:'center',color:i<3?C.gold:C.muted,fontWeight:i===0?700:400}}>{i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
-                          <td style={{padding:'8px 11px',color:i===0?C.green:C.text,fontWeight:i===0?700:400,fontFamily:"'DM Sans',sans-serif"}}>{p.name}</td>
-                          <td style={{padding:'8px 11px',textAlign:'center',color:C.muted}}>{hcMap[p.name]??'—'}</td>
-                          <td style={{padding:'8px 11px',textAlign:'center',color:C.muted}}>{p.rounds}</td>
-                          <td style={{padding:'8px 11px',textAlign:'center'}}>{(p.totalGross/p.rounds).toFixed(1)}</td>
-                          <td style={{padding:'8px 11px',textAlign:'center',color:i===0?C.green:C.text,fontWeight:i===0?700:400}}>{(p.totalNet/p.rounds).toFixed(1)}</td>
-                          <td style={{padding:'8px 11px',textAlign:'center',color:C.gold,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt$0(winnings[p.name]||0)}</td>
-                        </tr>
-                      ));
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+            <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>{rounds.filter(r=>r.status==='locked').length} completed rounds · Ranked by total winnings</p>
+
+            {(()=>{
+              // Build stats
+              const stats={};
+              rounds.filter(r=>r.status==='locked').forEach(r=>{
+                const rPar=r.par||par;
+                Object.entries(r.scores||{}).forEach(([name,sc])=>{
+                  if(!stats[name]) stats[name]={name,rounds:0,totalGross:0,totalNet:0};
+                  const gross=sumArr(sc.map((s,i)=>s>0?s:rPar[i]));
+                  stats[name].rounds++;
+                  stats[name].totalGross+=gross;
+                  stats[name].totalNet+=gross-(hcMap[name]??0);
+                });
+              });
+              const winnings={};
+              payoutsHistory.forEach(p=>{
+                if(!winnings[p.player_name]) winnings[p.player_name]=0;
+                winnings[p.player_name]+=parseFloat(p.amount)||0;
+              });
+
+              // This week's scores (current selected round if locked)
+              const thisWeekRound = rounds.find(r=>r.id===selRound&&r.status==='locked')
+                || rounds.filter(r=>r.status==='locked').sort((a,b)=>b.id-a.id)[0];
+              const thisWeekStats = {};
+              if(thisWeekRound){
+                const rPar=thisWeekRound.par||par;
+                Object.entries(thisWeekRound.scores||{}).forEach(([name,sc])=>{
+                  const gross=sumArr(sc.map((s,i)=>s>0?s:rPar[i]));
+                  thisWeekStats[name]={gross,net:gross-(hcMap[name]??0)};
+                });
+              }
+              const thisWeekRanked=[...Object.entries(thisWeekStats)]
+                .sort((a,b)=>a[1].net-b[1].net)
+                .map(([name],i)=>({name,place:i+1}));
+              const thisWeekPlaceMap=Object.fromEntries(thisWeekRanked.map(x=>[x.name,x.place]));
+
+              // Full season ranking by total winnings
+              const seasonRanked=Object.values(stats)
+                .map(p=>({...p,winnings:winnings[p.name]||0,avgNet:p.totalNet/p.rounds,avgGross:p.totalGross/p.rounds}))
+                .sort((a,b)=>b.winnings-a.winnings);
+
+              const top10=seasonRanked.slice(0,10);
+              const rest=seasonRanked.slice(10);
+
+              return (
+                <>
+                  {/* TOP 10 LEADERBOARD — prominent display */}
+                  <div style={{marginBottom:20}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                      <div style={{fontWeight:700,fontSize:'0.85rem',color:C.green}}>🏆 Top 10 — Season Leaders</div>
+                      {thisWeekRound&&<div style={{color:C.muted,fontSize:'0.72rem'}}>This week: {thisWeekRound.date}</div>}
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                      {top10.map((p,i)=>{
+                        const medals=['🥇','🥈','🥉'];
+                        const thisWeekPlace=thisWeekPlaceMap[p.name];
+                        const isTop3=i<3;
+                        return (
+                          <div key={p.name} style={{
+                            display:'flex',alignItems:'center',gap:10,
+                            background:i===0?'#1a3a0e':i===1?'#1e3a1e':i===2?'#1e3a24':C.card,
+                            border:`1.5px solid ${i===0?C.gold:i<3?C.green:C.border}`,
+                            borderRadius:10,padding:'10px 14px',
+                            transition:'all .1s',
+                          }}>
+                            {/* Rank */}
+                            <div style={{width:32,textAlign:'center',flexShrink:0}}>
+                              {i<3
+                                ?<span style={{fontSize:'1.3rem'}}>{medals[i]}</span>
+                                :<span style={{fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.muted,fontSize:'0.9rem'}}>#{i+1}</span>
+                              }
+                            </div>
+                            {/* Name + HC */}
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontWeight:isTop3?700:600,fontSize:'0.92rem',color:isTop3?'#f0e8c8':C.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                              <div style={{color:isTop3?'#86efac':C.muted,fontSize:'0.68rem'}}>HC {hcMap[p.name]??'?'} · {p.rounds} round{p.rounds!==1?'s':''}</div>
+                            </div>
+                            {/* This week's net score */}
+                            {thisWeekStats[p.name]&&(
+                              <div style={{textAlign:'center',flexShrink:0,minWidth:60}}>
+                                <div style={{fontSize:'0.62rem',color:isTop3?'#86efac':C.muted,marginBottom:1}}>this week</div>
+                                <div style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:'0.88rem',color:isTop3?'#f0e8c8':C.text}}>
+                                  net {thisWeekStats[p.name].net}
+                                </div>
+                                {thisWeekPlace&&<div style={{fontSize:'0.62rem',color:thisWeekPlace<=3?C.gold:isTop3?'#86efac':C.muted}}>
+                                  {thisWeekPlace===1?'🏆':thisWeekPlace===2?'🥈':thisWeekPlace===3?'🥉':''}#{thisWeekPlace} this wk
+                                </div>}
+                              </div>
+                            )}
+                            {/* Avg net */}
+                            <div style={{textAlign:'center',flexShrink:0,minWidth:52}}>
+                              <div style={{fontSize:'0.62rem',color:isTop3?'#86efac':C.muted,marginBottom:1}}>avg net</div>
+                              <div style={{fontFamily:"'DM Mono',monospace",fontWeight:600,fontSize:'0.85rem',color:isTop3?'#f0e8c8':C.text}}>{p.avgNet.toFixed(1)}</div>
+                            </div>
+                            {/* Winnings */}
+                            <div style={{textAlign:'right',flexShrink:0,minWidth:56}}>
+                              <div style={{fontSize:'0.62rem',color:isTop3?'#86efac':C.muted,marginBottom:1}}>winnings</div>
+                              <div style={{fontFamily:"'DM Mono',monospace",fontWeight:800,fontSize:'1rem',color:C.gold}}>{fmt$0(p.winnings)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* FULL TABLE — all players */}
+                  <Card>
+                    <CardHead>Full Season Table</CardHead>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontFamily:"'DM Mono',monospace",fontSize:'0.78rem'}}>
+                        <thead><tr style={{background:C.light,borderBottom:`1px solid ${C.border}`}}>
+                          {['#','Player','HC','Rds','Avg Gross','Avg Net','This Wk Net','This Wk Place','Winnings'].map(h=>(
+                            <th key={h} style={{padding:'8px 10px',color:C.muted,fontWeight:600,textAlign:h==='Player'?'left':'center',fontSize:'0.67rem',whiteSpace:'nowrap'}}>{h}</th>
+                          ))}
+                        </tr></thead>
+                        <tbody>
+                          {seasonRanked.map((p,i)=>{
+                            const thisWkPlace=thisWeekPlaceMap[p.name];
+                            const thisWkNet=thisWeekStats[p.name]?.net;
+                            return (
+                              <tr key={p.name} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?C.bg:C.card}}>
+                                <td style={{padding:'7px 10px',textAlign:'center',color:i<3?C.gold:C.muted,fontWeight:i<3?700:400}}>{i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+                                <td style={{padding:'7px 10px',color:C.text,fontFamily:"'DM Sans',sans-serif",fontWeight:i<3?600:400}}>{p.name}</td>
+                                <td style={{padding:'7px 10px',textAlign:'center',color:C.muted}}>{hcMap[p.name]??'—'}</td>
+                                <td style={{padding:'7px 10px',textAlign:'center',color:C.muted}}>{p.rounds}</td>
+                                <td style={{padding:'7px 10px',textAlign:'center'}}>{p.avgGross.toFixed(1)}</td>
+                                <td style={{padding:'7px 10px',textAlign:'center',color:C.green,fontWeight:500}}>{p.avgNet.toFixed(1)}</td>
+                                <td style={{padding:'7px 10px',textAlign:'center',color:thisWkNet!=null?C.text:C.muted}}>{thisWkNet!=null?thisWkNet:'—'}</td>
+                                <td style={{padding:'7px 10px',textAlign:'center',color:thisWkPlace<=3?C.gold:C.muted,fontWeight:thisWkPlace<=3?700:400}}>
+                                  {thisWkPlace?`#${thisWkPlace}`:'—'}
+                                </td>
+                                <td style={{padding:'7px 10px',textAlign:'center',color:C.gold,fontWeight:700}}>{fmt$0(p.winnings)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                </>
+              );
+            })()}
           </div>
         )}
 
