@@ -403,6 +403,7 @@ export default function App() {
   const [mbdSeg1,setMbdSeg1]=useState([]);  // pairs for holes 1-6
   const [mbdSeg2,setMbdSeg2]=useState([]);  // pairs for holes 7-12
   const [mbdSeg3,setMbdSeg3]=useState([]);  // pairs for holes 13-18
+  const [draftSuperSkins,setDraftSuperSkins]=useState([]);  // super skins opt-in
   const [draftGroups,setDraftGroups]=useState([]);                       // manual foursomes
   const [draftPairs,setDraftPairs]=useState([]);
   const [weeklyField,setWeeklyField]=useState([]);                        // players selected for this Sunday
@@ -689,7 +690,7 @@ export default function App() {
         mbd_a:draftMbdFlights.A,mbd_b:draftMbdFlights.B,
         mbd_seg1:mbdSeg1, mbd_seg2:mbdSeg2, mbd_seg3:mbdSeg3,
         oh_shit_player:ohShitPlayer||null,
-        super_skin_players:[],odd_player:oddLowNet||null,
+        super_skin_players:draftSuperSkins,odd_player:oddLowNet||null,
         foursomes:draftGroups,
       });
       setNewRound({date:'',courseId:'',numFlights:3});
@@ -700,6 +701,7 @@ export default function App() {
       setOhShitPlayer(null);
       setMbdSeg1([]);setMbdSeg2([]);setMbdSeg3([]);
       setDraftGroups([]);
+      setDraftSuperSkins([]);
       setDraftPairs([]);
       setNewRoundStep(1);setSelRound(rid);
       await loadAll(rid);setView('groups');
@@ -1688,7 +1690,7 @@ export default function App() {
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>➕ New Round</h2>
             <div style={{display:'flex',gap:8,marginBottom:20}}>
-              {[1,2,3,4,5].map(s=>(
+              {[1,2,3,4,5,6].map(s=>(
                 <div key={s} style={{flex:1,height:4,borderRadius:4,background:newRoundStep>=s?C.green:C.border}}/>
               ))}
             </div>
@@ -1699,7 +1701,13 @@ export default function App() {
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
                   <div>
                     <label style={{display:'block',color:C.muted,fontSize:'0.72rem',marginBottom:4}}>Date</label>
-                    <input defaultValue={newRound.date} onBlur={e=>setNewRound(nr=>({...nr,date:e.target.value}))} placeholder="May 25, 2025"
+                    <input type="date"
+                      defaultValue={newRound.dateISO||new Date().toISOString().split('T')[0]}
+                      onChange={e=>{
+                        const d=new Date(e.target.value+'T12:00:00');
+                        const label=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+                        setNewRound(nr=>({...nr,date:label,dateISO:e.target.value}));
+                      }}
                       style={{width:'100%',border:`1.5px solid ${C.border}`,borderRadius:6,padding:'8px 10px',fontSize:'0.85rem'}}/>
                   </div>
                   <div>
@@ -2031,14 +2039,69 @@ export default function App() {
 
                 <div style={{display:'flex',gap:8}}>
                   <Btn outline onClick={()=>setNewRoundStep(3)}>← Back</Btn>
-                  <Btn onClick={()=>setNewRoundStep(5)}>Next — Review →</Btn>
+                  <Btn onClick={()=>setNewRoundStep(5)}>Next — Super Skins →</Btn>
                 </div>
               </Card>
             )}
 
             {newRoundStep===5&&(
               <Card style={{padding:20,marginBottom:14}}>
-                <div style={{color:C.green,fontWeight:700,marginBottom:14}}>Step 5 — Review & Start</div>
+                <div style={{color:C.green,fontWeight:700,marginBottom:4}}>Step 5 — Super Skins</div>
+                <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:14}}>
+                  Tap players who are opting in to Super Skins this week. Each pays the ${' '}
+                  <strong>Super Skin fee</strong> separately from the buy-in.
+                  {draftSuperSkins.length>0&&<span style={{color:C.green,fontWeight:700}}> {draftSuperSkins.length} opted in so far.</span>}
+                </p>
+                <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+                  <button onClick={()=>setDraftSuperSkins(selectedPlayers)}
+                    style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'4px 12px',fontSize:'0.74rem',cursor:'pointer',color:C.text}}>
+                    Select All
+                  </button>
+                  <button onClick={()=>setDraftSuperSkins([])}
+                    style={{background:C.light,border:`1px solid ${C.border}`,borderRadius:5,padding:'4px 12px',fontSize:'0.74rem',cursor:'pointer',color:C.text}}>
+                    Clear
+                  </button>
+                </div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
+                  {[...selectedPlayers].sort((a,b)=>(hcMap[a]??0)-(hcMap[b]??0)).map(p=>{
+                    const opted=draftSuperSkins.includes(p);
+                    return (
+                      <button key={p}
+                        onClick={()=>setDraftSuperSkins(prev=>opted?prev.filter(x=>x!==p):[...prev,p])}
+                        style={{
+                          background:opted?'#1a3a0e':C.card,
+                          color:opted?'#f0e8c8':C.text,
+                          border:`1.5px solid ${opted?C.gold:C.border}`,
+                          borderRadius:8,padding:'8px 14px',cursor:'pointer',
+                          fontWeight:opted?600:400,
+                          display:'flex',alignItems:'center',gap:8,
+                          transition:'all .12s',
+                        }}>
+                        <div style={{textAlign:'left'}}>
+                          <div style={{fontSize:'0.85rem'}}>{p}</div>
+                          <div style={{fontSize:'0.68rem',opacity:0.7}}>HC {hcMap[p]??'?'}</div>
+                        </div>
+                        {opted&&<span style={{color:C.gold,fontSize:'0.85rem'}}>★</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{background:C.light,borderRadius:6,padding:'10px 14px',marginBottom:14,fontSize:'0.78rem',color:C.muted,border:`1px solid ${C.border}`}}>
+                  {draftSuperSkins.length>0
+                    ?<span style={{color:C.green,fontWeight:600}}>★ {draftSuperSkins.length} players opted in — Super Skins pot will be ${draftSuperSkins.length * 10}</span>
+                    :'No one opted in yet — you can also set this in Setup after the round starts.'
+                  }
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <Btn outline onClick={()=>setNewRoundStep(4)}>← Back</Btn>
+                  <Btn onClick={()=>setNewRoundStep(6)}>Next — Review →</Btn>
+                </div>
+              </Card>
+            )}
+
+            {newRoundStep===6&&(
+              <Card style={{padding:20,marginBottom:14}}>
+                <div style={{color:C.green,fontWeight:700,marginBottom:14}}>Step 6 — Review & Start</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
                   {/* Foursomes summary */}
                   <div>
@@ -2068,9 +2131,10 @@ export default function App() {
                 <div style={{background:C.light,borderRadius:6,padding:'10px 12px',marginBottom:14,fontSize:'0.75rem',color:C.muted}}>
                   📍 {round?.course?.name||dbCourses.find(c=>c.id===Number(newRound.courseId))?.name} · {newRound.date} · {selectedPlayers.length} players · {newRound.numFlights} Low Net flights
                   {ohShitPlayer&&` · ${ohShitPlayer} sits 2MBD`}
+                  {draftSuperSkins.length>0&&<span style={{color:C.gold,fontWeight:600}}> · ★ {draftSuperSkins.length} Super Skins</span>}
                 </div>
                 <div style={{display:'flex',gap:8}}>
-                  <Btn outline onClick={()=>setNewRoundStep(4)}>← Back</Btn>
+                  <Btn outline onClick={()=>setNewRoundStep(5)}>← Back</Btn>
                   <Btn onClick={submitNewRound} disabled={saving} style={{flex:1}}>
                     {saving?'Creating round…':'🚀 Start Round!'}
                   </Btn>
