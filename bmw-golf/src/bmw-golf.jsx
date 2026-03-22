@@ -612,11 +612,10 @@ export default function App() {
       lowNet={A:sorted.slice(0,half),B:sorted.slice(half),C:[]};
     } else {
       const third=Math.floor(n/3);
-      const odd=n%3!==0?sorted[n-1]:null;
       lowNet={
         A:sorted.slice(0,third),
         B:sorted.slice(third,third*2),
-        C:odd?sorted.slice(third*2).filter(p=>p!==odd):sorted.slice(third*2),
+        C:sorted.slice(third*2),
       };
     }
     // Skins & 2MBD always A/B even split
@@ -690,7 +689,7 @@ export default function App() {
         mbd_a:draftMbdFlights.A,mbd_b:draftMbdFlights.B,
         mbd_seg1:mbdSeg1, mbd_seg2:mbdSeg2, mbd_seg3:mbdSeg3,
         oh_shit_player:ohShitPlayer||null,
-        super_skin_players:draftSuperSkins,odd_player:oddLowNet||null,
+        super_skin_players:draftSuperSkins,odd_player:null,
         foursomes:draftGroups,
       });
       setNewRound({date:'',courseId:'',numFlights:3});
