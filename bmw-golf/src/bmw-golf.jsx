@@ -926,29 +926,33 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap',justifyContent:'flex-end'}}>
-              <select value={selRound??''} onChange={e=>setSelRound(Number(e.target.value))}
-                style={{background:C.light,color:C.text,border:`1px solid ${C.border}`,borderRadius:6,padding:'4px 8px',fontSize:'0.72rem',maxWidth:120}}>
-                {rounds.map(r=><option key={r.id} value={r.id}>{r.date}</option>)}
-              </select>
-              {nav.map(n=>(
-                <button key={n.key} onClick={()=>setView(n.key)} style={{
-                  background:view===n.key?C.green:'transparent',color:view===n.key?'#fff':C.muted,
-                  border:`1.5px solid ${view===n.key?C.green:C.border}`,borderRadius:6,
-                  padding:'4px 9px',fontSize:'0.71rem',fontWeight:view===n.key?700:500,cursor:'pointer',
-                  display:'flex',alignItems:'center',gap:3,
-                }}><span>{n.icon}</span><span>{n.label}</span></button>
-              ))}
-              <button onClick={()=>adminMode?setAdmin(false):setShowPwBox(true)} style={{
-                background:adminMode?'#dcfce7':'transparent',color:adminMode?C.green:C.muted,
-                border:`1.5px solid ${adminMode?C.green:C.border}`,borderRadius:6,padding:'4px 9px',fontSize:'0.71rem',cursor:'pointer',
-              }}>{adminMode?'🔓':'🔒'}</button>
+            <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end'}}>
+              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                <select value={selRound??''} onChange={e=>setSelRound(Number(e.target.value))}
+                  style={{background:C.light,color:C.text,border:`1px solid ${C.border}`,borderRadius:6,padding:'4px 8px',fontSize:'0.72rem',maxWidth:130}}>
+                  {rounds.map(r=><option key={r.id} value={r.id}>{r.date}</option>)}
+                </select>
+                <button onClick={()=>adminMode?setAdmin(false):setShowPwBox(true)} style={{
+                  background:adminMode?'#dcfce7':'transparent',color:adminMode?C.green:C.muted,
+                  border:`1.5px solid ${adminMode?C.green:C.border}`,borderRadius:6,padding:'4px 9px',fontSize:'0.71rem',cursor:'pointer',
+                }}>{adminMode?'🔓':'🔒'}</button>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:4,overflowX:'auto',maxWidth:'calc(100vw - 120px)',paddingBottom:2}}>
+                {nav.map(n=>(
+                  <button key={n.key} onClick={()=>setView(n.key)} style={{
+                    background:view===n.key?C.green:'transparent',color:view===n.key?'#fff':C.muted,
+                    border:`1.5px solid ${view===n.key?C.green:C.border}`,borderRadius:6,
+                    padding:'4px 8px',fontSize:'0.69rem',fontWeight:view===n.key?700:500,cursor:'pointer',
+                    display:'flex',alignItems:'center',gap:3,whiteSpace:'nowrap',flexShrink:0,
+                  }}><span>{n.icon}</span><span>{n.label}</span></button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main style={{maxWidth:1060,margin:'0 auto',padding:'20px 16px'}}>
+      <main style={{maxWidth:1060,margin:'0 auto',padding:'14px 10px'}}>
 
         {/* ══════ GROUPS / LIVE SCORING ══════════════════════ */}
         {view==='groups'&&(
@@ -1067,29 +1071,28 @@ export default function App() {
 
             {payouts&&(<>
               {/* Pot summary */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:16}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
                 {[
                   {icon:'📍',label:'CTP',          pot:payouts.ctpPot,         sub:`${fmt$0(payouts.ctpPerHole)}/hole`,         super:false},
                   {icon:'🏅',label:'Low Net',      pot:payouts.lowNetPot,      sub:`${fmt$0(payouts.lowNetPot/(payouts.lowNetFlights?.length||2))}/flight`, super:false},
-                  {icon:'🎯',label:'Skins',        pot:payouts.skinsPot,       sub:`${fmt$0(payouts.skinsPot/2)}/flight · A&B`,  super:false},
-                  {icon:'🎲',label:'2MBD',         pot:payouts.twoMbdPot,      sub:`${fmt$0(payouts.twoMbd?.segPot||0)}/segment`, super:false},
-                  {icon:null, label:'Super Skins', pot:payouts.superSkinPot,   sub:`${(payouts.superSkins?.players||[]).length} players opted in`, super:true},
+                  {icon:'🎯',label:'Skins',        pot:payouts.skinsPot,       sub:`${fmt$0(payouts.skinsPot/2)}/flt · A&B`,  super:false},
+                  {icon:'🎲',label:'2MBD',         pot:payouts.twoMbdPot,      sub:`${fmt$0(payouts.twoMbd?.segPot||0)}/seg`, super:false},
+                  {icon:null, label:'Super Skins', pot:payouts.superSkinPot,   sub:`${(payouts.superSkins?.players||[]).length} opted in`, super:true},
                 ].map(x=>(
                   <Card key={x.label} style={x.super?{background:'#1a3a0e',border:`2px solid ${C.gold}`}:{}}>
-                    <div style={{padding:'14px',textAlign:'center'}}>
+                    <div style={{padding:'10px 8px',textAlign:'center'}}>
                       {x.super?(
-                        /* Custom Super Skins icon — gold S bolt */
-                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{margin:'0 auto 4px',display:'block'}}>
+                        <svg width="24" height="24" viewBox="0 0 28 28" fill="none" style={{margin:'0 auto 3px',display:'block'}}>
                           <circle cx="14" cy="14" r="13" fill="#b8860b"/>
                           <polygon points="14,3 17,10 24,8 18,15 22,25 14,19 6,25 10,15 4,8 11,10" fill="#f0e8c8" stroke="#7a5c08" strokeWidth="0.5"/>
                           <text x="14" y="18" textAnchor="middle" fill="#1a3a0e" fontFamily="Georgia,serif" fontSize="10" fontWeight="900">SS</text>
                         </svg>
                       ):(
-                        <div style={{fontSize:'1.2rem',marginBottom:4}}>{x.icon}</div>
+                        <div style={{fontSize:'1rem',marginBottom:3}}>{x.icon}</div>
                       )}
-                      <div style={{color:x.super?'#f0e8c8':C.muted,fontSize:'0.65rem',letterSpacing:'0.07em',textTransform:'uppercase',marginBottom:3,fontWeight:x.super?700:400}}>{x.label}</div>
-                      <div style={{color:C.gold,fontWeight:800,fontSize:'1.3rem',fontFamily:"'DM Mono',monospace"}}>{fmt$0(x.pot)}</div>
-                      <div style={{color:x.super?'#86efac':C.muted,fontSize:'0.64rem',marginTop:3}}>{x.sub}</div>
+                      <div style={{color:x.super?'#f0e8c8':C.muted,fontSize:'0.58rem',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:2,fontWeight:x.super?700:400}}>{x.label}</div>
+                      <div style={{color:C.gold,fontWeight:800,fontSize:'1.1rem',fontFamily:"'DM Mono',monospace"}}>{fmt$0(x.pot)}</div>
+                      <div style={{color:x.super?'#86efac':C.muted,fontSize:'0.58rem',marginTop:2,lineHeight:1.3}}>{x.sub}</div>
                     </div>
                   </Card>
                 ))}
