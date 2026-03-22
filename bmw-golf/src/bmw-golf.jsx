@@ -801,7 +801,7 @@ export default function App() {
   );
 
   return (
-    <div style={{background:C.bg,minHeight:'100vh',fontFamily:"'DM Sans',sans-serif",color:C.text}}>
+    <div style={{background:C.bg,minHeight:'100vh',fontFamily:"'DM Sans',sans-serif",color:C.text,overflowX:'hidden'}}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
@@ -914,19 +914,19 @@ export default function App() {
       {/* ── HEADER ── */}
       <header style={{background:C.card,borderBottom:`1px solid ${C.border}`,position:'sticky',top:0,zIndex:50,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'0 16px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',height:56,gap:10}}>
-            <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-              <Logo size={36}/>
-              <div>
-                <div style={{fontFamily:"'Playfair Display',serif",color:C.green,fontSize:'0.95rem',lineHeight:1.1,fontWeight:700}}>Alamo City BMW Golf Group</div>
-                <div style={{color:C.muted,fontSize:'0.6rem',marginTop:1}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',minHeight:56,gap:8,padding:'6px 0',overflow:'hidden'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0,minWidth:0}}>
+              <Logo size={32}/>
+              <div style={{minWidth:0}}>
+                <div style={{fontFamily:"'Playfair Display',serif",color:C.green,fontSize:'0.85rem',lineHeight:1.1,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Alamo City BMW Golf Group</div>
+                <div style={{color:C.muted,fontSize:'0.58rem',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                   {round?.course?.name} · {round?.date}
                   {round?.status==='locked'&&<span style={{color:C.red,marginLeft:6,fontWeight:700}}>🔒 LOCKED</span>}
                   {round?.status==='live'&&<span style={{color:'#16a34a',marginLeft:6,fontWeight:700}}>🟢 LIVE</span>}
                 </div>
               </div>
             </div>
-            <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end',minWidth:0}}>
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <select value={selRound??''} onChange={e=>setSelRound(Number(e.target.value))}
                   style={{background:C.light,color:C.text,border:`1px solid ${C.border}`,borderRadius:6,padding:'4px 8px',fontSize:'0.72rem',maxWidth:130}}>
@@ -937,7 +937,7 @@ export default function App() {
                   border:`1.5px solid ${adminMode?C.green:C.border}`,borderRadius:6,padding:'4px 9px',fontSize:'0.71rem',cursor:'pointer',
                 }}>{adminMode?'🔓':'🔒'}</button>
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:4,overflowX:'auto',maxWidth:'calc(100vw - 120px)',paddingBottom:2}}>
+              <div style={{display:'flex',alignItems:'center',gap:4,overflowX:'auto',paddingBottom:2,maxWidth:'60vw'}}>
                 {nav.map(n=>(
                   <button key={n.key} onClick={()=>setView(n.key)} style={{
                     background:view===n.key?C.green:'transparent',color:view===n.key?'#fff':C.muted,
@@ -984,7 +984,7 @@ export default function App() {
             )}
 
             {/* Show foursomes if available, otherwise fall back to 2MBD groups */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:12}}>
               {(round?.config?.foursomes?.length
                 ? round.config.foursomes.map((grp,gi)=>({gi, players:grp, type:'foursome'}))
                 : (round?.pairings||[]).map((pairs,gi)=>({gi, players:pairs.flat().filter(Boolean), type:'mbd'}))
@@ -1174,33 +1174,30 @@ export default function App() {
                 </Card>
               )}
 
-              {/* CTP + 2MBD */}
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              {/* CTP + 2MBD — stacked vertically on mobile */}
+              <div style={{display:'flex',flexDirection:'column',gap:12}}>
                 <Card>
                   <CardHead>📍 Closest to Pin — {fmt$0(payouts.ctpPot)} · {fmt$0(payouts.ctpPerHole)}/hole</CardHead>
-                  <div style={{padding:'12px 16px'}}>
+                  <div style={{padding:'12px 16px',display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
                     {par3Idx.length===0&&<p style={{color:C.muted,fontSize:'0.76rem',margin:0}}>No par 3s found for this course.</p>}
                     {par3Idx.map(holeIdx=>{
                       const key=`h${holeIdx+1}`;
-                      // Merge optimistic local state with round data
                       const remoteEntry=round?.ctp?.[key]||{};
                       const localEntry=ctpLocal[key];
                       const winner = localEntry?.player ?? (typeof remoteEntry==='object' ? remoteEntry.player : remoteEntry) ?? '';
                       const distance = localEntry?.distance ?? (typeof remoteEntry==='object' ? remoteEntry.distance : '') ?? '';
                       const allInRound=Object.keys(round?.scores||{}).sort();
                       return (
-                        <div key={key} style={{marginBottom:12,background:C.light,borderRadius:7,padding:'9px 12px',border:`1px solid ${winner?C.green:C.border}`}}>
-                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                            <span style={{fontWeight:700,fontSize:'0.8rem',color:C.green}}>Hole {holeIdx+1} — Par 3</span>
-                            <span style={{color:C.gold,fontWeight:700,fontSize:'0.75rem',fontFamily:"'DM Mono',monospace"}}>{fmt$0(payouts.ctpPerHole)}</span>
+                        <div key={key} style={{background:C.light,borderRadius:7,padding:'9px 12px',border:`1px solid ${winner?C.green:C.border}`}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                            <span style={{fontWeight:700,fontSize:'0.8rem',color:C.green,whiteSpace:'nowrap'}}>Hole {holeIdx+1} — Par 3</span>
+                            <span style={{color:C.gold,fontWeight:700,fontSize:'0.75rem',fontFamily:"'DM Mono',monospace",marginLeft:8,flexShrink:0}}>{fmt$0(payouts.ctpPerHole)}</span>
                           </div>
-                          {/* Player selector — controlled, open to all when live */}
                           <select value={winner||''} onChange={e=>saveCtp(key,e.target.value,distance)}
                             style={{width:'100%',border:`1px solid ${C.border}`,borderRadius:5,padding:'5px 8px',fontSize:'0.78rem',marginBottom:6,background:winner?'#dcfce7':C.card}}>
                             <option value=''>— Tap to claim CTP —</option>
                             {allInRound.map(n=><option key={n} value={n}>{n}</option>)}
                           </select>
-                          {/* Distance input — uncontrolled with onBlur save */}
                           <div style={{display:'flex',alignItems:'center',gap:6}}>
                             <input
                               key={`${key}-${distance}`}
@@ -1229,17 +1226,19 @@ export default function App() {
                         ⚠️ Oh Shit: <strong>{payouts.twoMbd.ohShitPlayer}</strong> sits out — refund 2MBD
                       </div>
                     )}
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:8}}>
                     {(payouts.twoMbd.segments||[]).map((seg,si)=>(
-                      <div key={si} style={{marginBottom:8,background:C.bg,borderRadius:6,padding:'8px 10px',border:`1px solid ${C.border}`}}>
-                        <div style={{color:C.muted,fontSize:'0.66rem',marginBottom:4,fontWeight:600}}>{seg.label} — {fmt$0(seg.pot)}</div>
+                      <div key={si} style={{background:C.bg,borderRadius:6,padding:'8px 10px',border:`1px solid ${C.border}`}}>
+                        <div style={{color:C.muted,fontSize:'0.66rem',marginBottom:6,fontWeight:600}}>{seg.label} — {fmt$0(seg.pot)}</div>
                         {seg.winner?(
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                            <span style={{color:C.green,fontWeight:700,fontSize:'0.85rem'}}>🏆 {seg.winner.pair[0]} & {seg.winner.pair[1]}</span>
-                            <span style={{fontFamily:"'DM Mono',monospace",color:C.green,fontWeight:700}}>{seg.winner.p1score}/{seg.winner.p2score}={seg.winner.combined}</span>
+                          <div>
+                            <div style={{color:C.green,fontWeight:700,fontSize:'0.85rem',marginBottom:3}}>🏆 {seg.winner.pair[0]} &amp; {seg.winner.pair[1]}</div>
+                            <div style={{fontFamily:"'DM Mono',monospace",color:C.gold,fontWeight:700,fontSize:'1rem'}}>{seg.winner.p1score}/{seg.winner.p2score}={seg.winner.combined}</div>
                           </div>
                         ):<span style={{color:C.muted,fontSize:'0.75rem'}}>In progress…</span>}
                       </div>
                     ))}
+                    </div>
                     {!payouts.twoMbd.segments?.length&&<p style={{color:C.muted,fontSize:'0.8rem',margin:0}}>Scores in progress…</p>}
                   </div>
                 </Card>
@@ -1252,29 +1251,28 @@ export default function App() {
         {view==='board'&&(
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:16,color:C.green}}>🏆 Scores by Flight</h2>
-            <div style={{display:'grid',gridTemplateColumns:`repeat(${payouts?.lowNetFlights?.length||3},1fr)`,gap:12,marginBottom:16}}>
+            <div style={{display:'grid',gridTemplateColumns:`repeat(${payouts?.lowNetFlights?.length||3},minmax(200px,1fr))`,gap:12,marginBottom:16,overflowX:'auto'}}>
               {(payouts?.flights||[{k:'A'},{k:'B'},{k:'C'}]).map(({k})=>(
-                <Card key={k}>
+                <Card key={k} style={{minWidth:180}}>
                   <CardHead><FlightBadge f={k}/></CardHead>
                   <table style={{width:'100%',borderCollapse:'collapse',fontFamily:"'DM Mono',monospace",fontSize:'0.78rem'}}>
                     <thead><tr style={{borderBottom:`1px solid ${C.border}`,background:C.card2}}>
-                      {['#','Player','HC','Gross','Net','Holes'].map(h=>(
-                        <th key={h} style={{padding:'6px 8px',color:C.muted,fontWeight:500,textAlign:h==='Player'?'left':'center',fontSize:'0.66rem'}}>{h}</th>
+                      {['#','Player','HC','Net','Holes'].map(h=>(
+                        <th key={h} style={{padding:'6px 6px',color:C.muted,fontWeight:500,textAlign:h==='Player'?'left':'center',fontSize:'0.64rem'}}>{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
                       {(flightedLB[k]||[]).map((p,i)=>(
                         <tr key={p.name} style={{borderBottom:`1px solid ${C.border}`,background:i===0?C.light:i%2===0?C.bg:C.card,cursor:isLive?'pointer':'default'}}
                           onClick={()=>isLive&&openScoring(p.name)}>
-                          <td style={{padding:'7px 8px',textAlign:'center',color:i<3?C.gold:C.muted,fontWeight:i===0?700:400}}>{i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
-                          <td style={{padding:'7px 8px',fontFamily:"'DM Sans',sans-serif",fontWeight:i===0?700:400,color:i===0?C.green:C.text}}>{p.name}</td>
-                          <td style={{padding:'7px 8px',textAlign:'center',color:C.muted}}>{p.hc}</td>
-                          <td style={{padding:'7px 8px',textAlign:'center'}}>{p.gross||'—'}</td>
-                          <td style={{padding:'7px 8px',textAlign:'center',color:i===0?C.green:C.text,fontWeight:i===0?700:400}}>{p.net||'—'}</td>
-                          <td style={{padding:'7px 8px',textAlign:'center',color:C.muted}}>{p.holesPlayed}/18</td>
+                          <td style={{padding:'6px 6px',textAlign:'center',color:i<3?C.gold:C.muted,fontWeight:i===0?700:400}}>{i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+                          <td style={{padding:'6px 6px',fontFamily:"'DM Sans',sans-serif",fontWeight:i===0?700:400,color:i===0?C.green:C.text,fontSize:'0.78rem'}}>{p.name}</td>
+                          <td style={{padding:'6px 6px',textAlign:'center',color:C.muted,fontSize:'0.75rem'}}>{p.hc}</td>
+                          <td style={{padding:'6px 6px',textAlign:'center',color:i===0?C.green:C.text,fontWeight:i===0?700:400}}>{p.net||'—'}</td>
+                          <td style={{padding:'6px 6px',textAlign:'center',color:C.muted,fontSize:'0.72rem'}}>{p.holesPlayed}/18</td>
                         </tr>
                       ))}
-                      {!(flightedLB[k]||[]).length&&<tr><td colSpan={6} style={{padding:'14px',textAlign:'center',color:C.muted,fontSize:'0.76rem'}}>No scores yet</td></tr>}
+                      {!(flightedLB[k]||[]).length&&<tr><td colSpan={5} style={{padding:'14px',textAlign:'center',color:C.muted,fontSize:'0.76rem'}}>No scores yet</td></tr>}
                     </tbody>
                   </table>
                 </Card>
