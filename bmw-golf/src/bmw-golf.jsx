@@ -1177,19 +1177,19 @@ export default function App() {
                             <span style={{fontWeight:700,fontSize:'0.8rem',color:C.green}}>Hole {holeIdx+1} — Par 3</span>
                             <span style={{color:C.gold,fontWeight:700,fontSize:'0.75rem',fontFamily:"'DM Mono',monospace"}}>{fmt$0(payouts.ctpPerHole)}</span>
                           </div>
-                          {/* Player selector — open to all when live */}
-                          <select defaultValue={winner||''} onBlur={e=>saveCtp(key,e.target.value,undefined)}
-                            onChange={e=>saveCtp(key,e.target.value,undefined)}
+                          {/* Player selector — controlled, open to all when live */}
+                          <select value={winner||''} onChange={e=>saveCtp(key,e.target.value,distance)}
                             style={{width:'100%',border:`1px solid ${C.border}`,borderRadius:5,padding:'5px 8px',fontSize:'0.78rem',marginBottom:6,background:winner?'#dcfce7':C.card}}>
                             <option value=''>— Tap to claim CTP —</option>
                             {allInRound.map(n=><option key={n} value={n}>{n}</option>)}
                           </select>
-                          {/* Distance input */}
+                          {/* Distance input — uncontrolled with onBlur save */}
                           <div style={{display:'flex',alignItems:'center',gap:6}}>
                             <input
+                              key={`${key}-${distance}`}
                               defaultValue={distance||''}
-                              placeholder="Distance (e.g. 4'2&quot;)"
-                              onBlur={e=>saveCtp(key,undefined,e.target.value)}
+                              placeholder={`e.g. 4'2"`}
+                              onBlur={e=>{if(e.target.value!==distance) saveCtp(key,winner,e.target.value);}}
                               style={{flex:1,border:`1px solid ${C.border}`,borderRadius:5,padding:'4px 8px',fontSize:'0.76rem',background:C.card}}
                             />
                             <span style={{color:C.muted,fontSize:'0.68rem',whiteSpace:'nowrap'}}>from pin</span>
