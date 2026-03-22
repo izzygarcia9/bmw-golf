@@ -645,12 +645,17 @@ export default function App() {
     return drawPairings(mbdA,mbdB);
   };
 
-  // Generate 3 independent segment draws (flat pair arrays)
+  // Generate 3 independent segment draws — fully random, anyone paired with anyone
   const generateSegmentDraws = (mbdA, mbdB) => {
-    const pairs1 = drawPairings(mbdA,mbdB).flatMap(g=>g);
-    const pairs2 = drawPairings(mbdA,mbdB).flatMap(g=>g);
-    const pairs3 = drawPairings(mbdA,mbdB).flatMap(g=>g);
-    return [pairs1, pairs2, pairs3];
+    const allPlayers = shuffle([...mbdA, ...mbdB]);
+    const makePairs = (players) => {
+      const shuffled = shuffle([...players]);
+      const pairs = [];
+      for(let i=0;i<shuffled.length;i+=2)
+        pairs.push(shuffled[i+1]?[shuffled[i],shuffled[i+1]]:[shuffled[i],'']);
+      return pairs;
+    };
+    return [makePairs(allPlayers), makePairs(allPlayers), makePairs(allPlayers)];
   };
 
   const submitNewRound = async()=>{
@@ -1424,7 +1429,7 @@ export default function App() {
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:4,color:C.green}}>🎲 2 Man Blind Draw</h2>
             <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:16}}>
-              {round?.date} · 3 separate draws · Lowest combined score wins each segment · {fmt$0(payouts?.twoMbdPot||0)} total · {fmt$0(payouts?.twoMbd?.segPot||0)}/segment
+              {round?.date} · 3 separate draws · Fully random pairings · Lowest combined score wins each segment · {fmt$0(payouts?.twoMbdPot||0)} total · {fmt$0(payouts?.twoMbd?.segPot||0)}/segment
             </p>
             {payouts?.twoMbd?.ohShitPlayer&&(
               <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'7px 12px',marginBottom:14,fontSize:'0.78rem',color:C.red}}>
@@ -1998,7 +2003,7 @@ export default function App() {
                   <div style={{color:C.green,fontWeight:700}}>Step 4 — 2MBD Draws (3 Segments)</div>
                 </div>
                 <p style={{color:C.muted,fontSize:'0.75rem',marginBottom:10}}>
-                  Each 6-hole segment has a <strong>separate random A+B draw</strong>. Lowest combined score wins each segment. {fmt$0((payouts?.twoMbdPot||0)/3)} per segment.
+                  Each 6-hole segment has a <strong>fully random draw</strong> — anyone can be paired with anyone. Lowest combined score wins each segment. {fmt$0((payouts?.twoMbdPot||0)/3)} per segment.
                 </p>
                 {ohShitPlayer&&(
                   <div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:6,padding:'7px 12px',marginBottom:12,fontSize:'0.78rem',color:C.red}}>
