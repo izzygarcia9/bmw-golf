@@ -914,12 +914,12 @@ export default function App() {
       {/* ── HEADER ── */}
       <header style={{background:C.card,borderBottom:`1px solid ${C.border}`,position:'sticky',top:0,zIndex:50,boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'0 16px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',minHeight:56,gap:8,padding:'6px 0',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,padding:'8px 0',overflow:'hidden'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0,minWidth:0,paddingTop:4}}>
               <Logo size={32}/>
               <div style={{minWidth:0}}>
-                <div style={{fontFamily:"'Playfair Display',serif",color:C.green,fontSize:'0.85rem',lineHeight:1.1,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Alamo City BMW Golf Group</div>
-                <div style={{color:C.muted,fontSize:'0.58rem',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                <div style={{fontFamily:"'Playfair Display',serif",color:C.green,fontSize:'0.85rem',lineHeight:1.2,fontWeight:700}}>Alamo City BMW Golf Group</div>
+                <div style={{color:C.muted,fontSize:'0.58rem',marginTop:2}}>
                   {round?.course?.name} · {round?.date}
                   {round?.status==='locked'&&<span style={{color:C.red,marginLeft:6,fontWeight:700}}>🔒 LOCKED</span>}
                   {round?.status==='live'&&<span style={{color:'#16a34a',marginLeft:6,fontWeight:700}}>🟢 LIVE</span>}
