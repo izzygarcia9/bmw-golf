@@ -406,6 +406,7 @@ export default function App() {
   const [draftGroups,setDraftGroups]=useState([]);                       // manual foursomes
   const [draftPairs,setDraftPairs]=useState([]);
   const [weeklyField,setWeeklyField]=useState([]);                        // players selected for this Sunday
+  const [ctpLocal,setCtpLocal]=useState({});  // optimistic CTP state
   const [movingPlayer,setMovingPlayer]=useState(null);                    // player being moved between groups
   const [cfgEdit,setCfgEdit]=useState(null);
   const [addPlayerName,setAddPlayerName]=useState('');
@@ -524,6 +525,11 @@ export default function App() {
   // ── CTP ─────────────────────────────────────────────────
   const saveCtp = async(key, val, distance)=>{
     if(!round) return;
+    // Optimistic update — show change immediately
+    setCtpLocal(prev=>({...prev,[key]:{
+      player: val!==undefined ? val : (prev[key]?.player||''),
+      distance: distance!==undefined ? distance : (prev[key]?.distance||''),
+    }}));
     const patch = {};
     if(val !== undefined) patch.player_name = val;
     if(distance !== undefined) patch.distance = distance;
@@ -1167,9 +1173,11 @@ export default function App() {
                     {par3Idx.length===0&&<p style={{color:C.muted,fontSize:'0.76rem',margin:0}}>No par 3s found for this course.</p>}
                     {par3Idx.map(holeIdx=>{
                       const key=`h${holeIdx+1}`;
-                      const ctpEntry=round?.ctp?.[key]||{};
-                      const winner = typeof ctpEntry==='object' ? ctpEntry.player : ctpEntry;
-                      const distance = typeof ctpEntry==='object' ? ctpEntry.distance : '';
+                      // Merge optimistic local state with round data
+                      const remoteEntry=round?.ctp?.[key]||{};
+                      const localEntry=ctpLocal[key];
+                      const winner = localEntry?.player ?? (typeof remoteEntry==='object' ? remoteEntry.player : remoteEntry) ?? '';
+                      const distance = localEntry?.distance ?? (typeof remoteEntry==='object' ? remoteEntry.distance : '') ?? '';
                       const allInRound=Object.keys(round?.scores||{}).sort();
                       return (
                         <div key={key} style={{marginBottom:12,background:C.light,borderRadius:7,padding:'9px 12px',border:`1px solid ${winner?C.green:C.border}`}}>
