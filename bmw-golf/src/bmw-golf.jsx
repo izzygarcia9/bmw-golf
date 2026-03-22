@@ -2089,11 +2089,14 @@ export default function App() {
               :(()=>{
                 const cfg=cfgEdit||round.config;
                 const setC=(k,v)=>setCfgEdit(prev=>({...(prev||round.config),[k]:v}));
-                const allPlayers=[
+                const allPlayers=([
                   ...(cfg.flight_a||[]),
                   ...(cfg.flight_b||[]),
                   ...(cfg.flight_c||[]),
-                ].filter(Boolean).sort();
+                ].filter(Boolean).length > 0
+                  ? [...(cfg.flight_a||[]),...(cfg.flight_b||[]),...(cfg.flight_c||[])]
+                  : Object.keys(round.scores||{})
+                ).filter(Boolean).sort();
                 return (
                   <div>
                     <Card style={{marginBottom:14}}>
