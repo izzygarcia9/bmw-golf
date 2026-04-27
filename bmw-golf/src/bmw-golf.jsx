@@ -772,12 +772,14 @@ export default function App() {
   );
 
   if(loading) return (
-    <div style={{background:C.bg,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif"}}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+    <div style={{background:C.green,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{textAlign:'center'}}>
-        <div style={{display:'inline-block',animation:'spin 1.4s linear infinite',fontSize:'2.5rem',marginBottom:12}}>⛳</div>
-        <div style={{color:C.muted,fontSize:'0.85rem'}}>Loading Sunday Skins…</div>
+        <Logo size={80}/>
+        <div style={{fontFamily:"'Playfair Display',serif",color:'#fff',fontSize:'1.8rem',fontWeight:900,marginTop:16}}>Sunday Skins</div>
+        <div style={{color:'rgba(255,255,255,0.7)',fontSize:'0.9rem',marginTop:4}}>Golf Group Scoring & Payouts</div>
+        <div style={{display:'inline-block',animation:'spin 1.4s linear infinite',fontSize:'1.5rem',marginTop:20}}>⛳</div>
       </div>
     </div>
   );
@@ -918,38 +920,38 @@ export default function App() {
       )}
 
       {/* ── HEADER ── */}
-      <header style={{background:'#fff',borderBottom:`2px solid ${C.border}`,position:'sticky',top:0,zIndex:50,boxShadow:'0 2px 8px rgba(0,0,0,0.1)'}}>
+      <header style={{background:C.green,position:'sticky',top:0,zIndex:50,boxShadow:'0 4px 12px rgba(0,0,0,0.15)'}}>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'0 12px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'8px 0'}}>
-            <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-              <Logo size={36}/>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'10px 0'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+              <Logo size={38}/>
               <div>
-                <div style={{fontFamily:"'Playfair Display',serif",color:C.green,fontSize:'1rem',lineHeight:1.2,fontWeight:700}}>Sunday Skins</div>
-                <div style={{color:C.muted,fontSize:'0.7rem',marginTop:1,fontWeight:500}}>
+                <div style={{fontFamily:"'Playfair Display',serif",color:'#fff',fontSize:'1.1rem',lineHeight:1.2,fontWeight:700}}>Sunday Skins</div>
+                <div style={{color:'rgba(255,255,255,0.75)',fontSize:'0.75rem',marginTop:1,fontWeight:500}}>
                   {round?.course?.name} · {round?.date}
-                  {round?.status==='locked'&&<span style={{color:C.red,marginLeft:6,fontWeight:700}}>🔒</span>}
-                  {round?.status==='live'&&<span style={{color:'#2E7D32',marginLeft:6,fontWeight:700}}>🟢</span>}
+                  {round?.status==='locked'&&<span style={{marginLeft:6,fontWeight:700}}>🔒</span>}
+                  {round?.status==='live'&&<span style={{marginLeft:6,fontWeight:700}}>🟢 LIVE</span>}
                 </div>
               </div>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:6}}>
               <select value={selRound??''} onChange={e=>setSelRound(Number(e.target.value))}
-                style={{background:'#f5f5f5',color:'#111',border:`2px solid ${C.border}`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',fontWeight:600,maxWidth:140}}>
-                {rounds.map(r=><option key={r.id} value={r.id}>{r.date}</option>)}
+                style={{background:'rgba(255,255,255,0.15)',color:'#fff',border:`2px solid rgba(255,255,255,0.3)`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',fontWeight:600,maxWidth:140}}>
+                {rounds.map(r=><option key={r.id} value={r.id} style={{color:'#111',background:'#fff'}}>{r.date}</option>)}
               </select>
               <button onClick={()=>adminMode?setAdmin(false):setShowPwBox(true)} style={{
-                background:adminMode?'#E8F5E9':'#f5f5f5',color:adminMode?C.green:'#666',
-                border:`2px solid ${adminMode?C.green:'#ddd'}`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',cursor:'pointer',fontWeight:700,
+                background:adminMode?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.1)',color:'#fff',
+                border:`2px solid rgba(255,255,255,0.3)`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',cursor:'pointer',fontWeight:700,
               }}>{adminMode?'🔓':'🔒'}</button>
             </div>
           </div>
-          {/* Nav tabs — bigger for mobile */}
-          <div style={{display:'flex',alignItems:'center',gap:4,overflowX:'auto',paddingBottom:8,WebkitOverflowScrolling:'touch'}}>
+          {/* Nav tabs */}
+          <div style={{display:'flex',alignItems:'center',gap:5,overflowX:'auto',paddingBottom:10,WebkitOverflowScrolling:'touch'}}>
             {nav.map(n=>(
               <button key={n.key} onClick={()=>setView(n.key)} style={{
-                background:view===n.key?C.green:'transparent',color:view===n.key?'#fff':'#555',
-                border:`2px solid ${view===n.key?C.green:'#ddd'}`,borderRadius:8,
-                padding:'8px 12px',fontSize:'0.82rem',fontWeight:view===n.key?700:600,cursor:'pointer',
+                background:view===n.key?'#fff':'rgba(255,255,255,0.12)',color:view===n.key?C.green:'rgba(255,255,255,0.9)',
+                border:'none',borderRadius:8,
+                padding:'8px 14px',fontSize:'0.85rem',fontWeight:view===n.key?800:600,cursor:'pointer',
                 display:'flex',alignItems:'center',gap:4,whiteSpace:'nowrap',flexShrink:0,
               }}><span>{n.icon}</span><span>{n.label}</span></button>
             ))}
@@ -964,10 +966,10 @@ export default function App() {
           <div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:16,flexWrap:'wrap',gap:10}}>
               <div>
-                <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.4rem',marginBottom:2,color:C.green}}>⛳ Today's Groups</h2>
-                <p style={{color:C.muted,fontSize:'0.75rem',margin:0}}>
-                  {round?.course?.name} · CR {round?.course?.rating}/{round?.course?.slope} · Par {parTotal}
-                  {isLive&&' · Tap your name to enter scores'}
+                <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'1.5rem',marginBottom:4,color:C.green}}>⛳ Today's Groups</h2>
+                <p style={{color:C.muted,fontSize:'0.85rem',margin:0,fontWeight:500}}>
+                  {round?.course?.name} · Par {parTotal} · CR {round?.course?.rating}/{round?.course?.slope}
+                  {isLive&&<span style={{color:C.green,fontWeight:700}}> · Tap your name to score</span>}
                 </p>
               </div>
               {adminMode&&isLive&&(
