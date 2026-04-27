@@ -53,20 +53,20 @@ const sb = async (path, method='GET', body=null) => {
 const scoreColor = (s,p) => {
   if(s<=0) return C.muted;
   const d=s-p;
-  if(d<=-2) return '#E65100';  // eagle — bold orange
-  if(d===-1) return '#B71C1C'; // birdie — bold red
-  if(d===0)  return '#1B5E20'; // par — bold green
-  if(d===1)  return '#424242'; // bogey — dark gray
-  return '#6A1B9A';            // double+ — bold purple
+  if(d<=-2) return '#F0C850';  // eagle — gold
+  if(d===-1) return '#f85149'; // birdie — red
+  if(d===0)  return '#2ea043'; // par — green
+  if(d===1)  return '#8b949e'; // bogey — gray
+  return '#bc8cff';            // double+ — purple
 };
 const scoreBg = (s,p) => {
   if(s<=0) return 'transparent';
   const d=s-p;
-  if(d<=-2) return '#FFF3E0'; // eagle — warm orange bg
-  if(d===-1) return '#FFEBEE'; // birdie — light red bg
-  if(d===0)  return '#E8F5E9'; // par — light green bg
-  if(d===1)  return '#EEEEEE'; // bogey — light gray bg
-  return '#F3E5F5';            // double+ — light purple bg
+  if(d<=-2) return '#F0C85020'; // eagle
+  if(d===-1) return '#f8514920'; // birdie
+  if(d===0)  return '#2ea04320'; // par
+  if(d===1)  return '#8b949e15'; // bogey
+  return '#bc8cff20';            // double+
 };
 
 const computeSkins = (scores, players, par) => {
@@ -313,13 +313,13 @@ const computePlayerStats = (rounds,playerName,par) => {
   return {totalRounds,totalGross,totalNet,avgGross:totalRounds?totalGross/totalRounds:0,avgNet:totalRounds?totalNet/totalRounds:0,birdies,eagles,pars,bogeys,doubles,bestNet:bestNet===999?null:bestNet,ctpWins,skins,wins};
 };
 
-// ── THEME — High contrast outdoor/sunlight optimized ─────
+// ── THEME — Dark premium golf app ─────────────────────────
 const C = {
-  bg:'#ffffff', card:'#ffffff', card2:'#f5f5f5',
-  border:'#d0d0d0', gold:'#B8860B', goldL:'#DAA520',
-  text:'#111111', muted:'#555555', green:'#1B5E20',
-  accent:'#2E7D32', light:'#F1F8E9', red:'#C62828',
-  fA:'#1565C0', fB:'#6A1B9A', fC:'#E65100',
+  bg:'#0d1117', card:'#161b22', card2:'#1c2333',
+  border:'#30363d', gold:'#DAA520', goldL:'#F0C850',
+  text:'#e6edf3', muted:'#8b949e', green:'#238636',
+  accent:'#2ea043', light:'#1c2333', red:'#f85149',
+  fA:'#58a6ff', fB:'#bc8cff', fC:'#f0883e',
 };
 const FC={A:C.fA,B:C.fB,C:C.fC};
 
@@ -735,61 +735,61 @@ export default function App() {
     ]:[]),
   ];
 
-  const Card=({children,style:s={}})=><div style={{background:'#fff',border:'none',borderRadius:16,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.06)',...s}}>{children}</div>;
+  const Card=({children,style:s={}})=><div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,overflow:'hidden',boxShadow:'0 4px 16px rgba(0,0,0,0.3)',...s}}>{children}</div>;
   const CardHead=({children,right})=>(
-    <div style={{background:C.green,padding:'12px 18px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-      <span style={{color:'#fff',fontSize:'0.82rem',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>{children}</span>
-      {right&&<span style={{color:'rgba(255,255,255,0.8)'}}>{right}</span>}
+    <div style={{background:C.card2,padding:'12px 18px',borderBottom:`1px solid ${C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <span style={{color:C.goldL,fontSize:'0.82rem',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>{children}</span>
+      {right&&<span style={{color:C.muted}}>{right}</span>}
     </div>
   );
-  const FlightBadge=({f})=><span style={{background:FC[f],color:'#fff',borderRadius:6,padding:'3px 10px',fontSize:'0.72rem',fontWeight:700,letterSpacing:'0.03em',boxShadow:'0 1px 3px rgba(0,0,0,0.15)'}}>Flight {f}</span>;
+  const FlightBadge=({f})=><span style={{background:FC[f]+'25',color:FC[f],borderRadius:6,padding:'3px 10px',fontSize:'0.72rem',fontWeight:700,border:`1px solid ${FC[f]}50`}}>Flight {f}</span>;
   const Btn=({children,onClick,color=C.green,disabled,small,outline,style:s={}})=>(
     <button onClick={onClick} disabled={disabled} style={{
-      background:outline?'transparent':disabled?'#e0e0e0':color,
-      color:outline?color:disabled?'#999':'#fff',
-      border:`2px solid ${disabled?'#ccc':color}`,
+      background:outline?'transparent':disabled?C.border:color,
+      color:outline?color:disabled?C.muted:'#fff',
+      border:`2px solid ${disabled?C.border:color}`,
       borderRadius:10,padding:small?'7px 14px':'11px 22px',
       fontWeight:700,fontSize:small?'0.8rem':'0.9rem',cursor:disabled?'default':'pointer',
       opacity:disabled?0.5:1,transition:'all .15s',
-      boxShadow:outline||disabled?'none':'0 2px 6px rgba(0,0,0,0.15)',
+      boxShadow:outline||disabled?'none':`0 2px 8px ${color}40`,
       letterSpacing:'0.02em',...s,
     }}>{children}</button>
   );
 
   if(!configured) return (
-    <div style={{background:C.green,minHeight:'100vh',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+    <div style={{background:C.bg,minHeight:'100vh',fontFamily:"'DM Sans',sans-serif",display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
       <Card style={{maxWidth:520,width:'100%',padding:40,borderRadius:20}}>
         <div style={{textAlign:'center',marginBottom:28}}><Logo size={80}/>
-          <h1 style={{fontFamily:"'Playfair Display',serif",color:C.green,fontSize:'1.8rem',margin:'16px 0 6px'}}>Sunday Skins</h1>
+          <h1 style={{fontFamily:"'Playfair Display',serif",color:C.goldL,fontSize:'1.8rem',margin:'16px 0 6px'}}>Sunday Skins</h1>
           <p style={{color:C.muted,fontSize:'0.9rem',margin:0,fontWeight:500}}>Golf Group Scoring & Payouts</p>
           <div style={{width:60,height:3,background:C.gold,borderRadius:2,margin:'12px auto 0'}}/>
         </div>
         <p style={{color:C.muted,fontSize:'0.85rem',textAlign:'center',marginBottom:16}}>Connect your Supabase database to get started</p>
-        <div style={{background:'#f8f8f8',borderRadius:12,padding:16,fontFamily:"'DM Mono',monospace",fontSize:'0.78rem',border:'2px solid #eee'}}>
+        <div style={{background:C.card2,borderRadius:12,padding:16,fontFamily:"'DM Mono',monospace",fontSize:'0.78rem',border:`1px solid ${C.border}`}}>
           <div style={{color:C.muted,marginBottom:6}}>// top of sunday-skins.jsx</div>
-          <div style={{color:C.text}}>const SUPABASE_URL = <span style={{color:C.green}}>'https://xxxx.supabase.co'</span>;</div>
-          <div style={{color:C.text}}>const SUPABASE_ANON_KEY = <span style={{color:C.green}}>'eyJhbGci...'</span>;</div>
+          <div style={{color:C.text}}>const SUPABASE_URL = <span style={{color:C.accent}}>'https://xxxx.supabase.co'</span>;</div>
+          <div style={{color:C.text}}>const SUPABASE_ANON_KEY = <span style={{color:C.accent}}>'eyJhbGci...'</span>;</div>
         </div>
       </Card>
     </div>
   );
 
   if(loading) return (
-    <div style={{background:C.green,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{background:C.bg,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif"}}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{textAlign:'center'}}>
         <Logo size={80}/>
-        <div style={{fontFamily:"'Playfair Display',serif",color:'#fff',fontSize:'1.8rem',fontWeight:900,marginTop:16}}>Sunday Skins</div>
-        <div style={{color:'rgba(255,255,255,0.7)',fontSize:'0.9rem',marginTop:4}}>Golf Group Scoring & Payouts</div>
+        <div style={{fontFamily:"'Playfair Display',serif",color:C.goldL,fontSize:'1.8rem',fontWeight:900,marginTop:16}}>Sunday Skins</div>
+        <div style={{color:C.muted,fontSize:'0.9rem',marginTop:4}}>Golf Group Scoring & Payouts</div>
         <div style={{display:'inline-block',animation:'spin 1.4s linear infinite',fontSize:'1.5rem',marginTop:20}}>⛳</div>
       </div>
     </div>
   );
 
   return (
-    <div style={{background:'#f0f2f0',minHeight:'100vh',fontFamily:"'DM Sans',sans-serif",color:C.text,overflowX:'hidden'}}>
+    <div style={{background:C.bg,minHeight:'100vh',fontFamily:"'DM Sans',sans-serif",color:C.text,overflowX:'hidden',paddingBottom:70}}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
@@ -798,24 +798,24 @@ export default function App() {
       `}</style>
 
       {/* Error bar */}
-      {err&&<div style={{background:'#D32F2F',padding:'10px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <span style={{color:'#fff',fontSize:'0.85rem',fontWeight:600}}>⚠️ {err}</span>
-        <button onClick={()=>setErr('')} style={{background:'rgba(255,255,255,0.2)',border:'none',color:'#fff',cursor:'pointer',borderRadius:6,padding:'4px 10px',fontWeight:700,fontSize:'0.85rem'}}>✕</button>
+      {err&&<div style={{background:'#f8514930',borderBottom:`1px solid ${C.red}`,padding:'10px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{color:C.red,fontSize:'0.85rem',fontWeight:600}}>⚠️ {err}</span>
+        <button onClick={()=>setErr('')} style={{background:'transparent',border:`1px solid ${C.red}`,color:C.red,cursor:'pointer',borderRadius:6,padding:'4px 10px',fontWeight:700,fontSize:'0.85rem'}}>✕</button>
       </div>}
-      {saving&&<div style={{background:C.gold,padding:'6px',textAlign:'center',fontSize:'0.78rem',color:'#fff',fontWeight:700,letterSpacing:'0.06em'}}>SAVING…</div>}
+      {saving&&<div style={{background:C.gold,padding:'6px',textAlign:'center',fontSize:'0.78rem',color:'#000',fontWeight:700,letterSpacing:'0.06em'}}>SAVING…</div>}
 
       {/* Live update indicator */}
       {lastUpdated&&isLive&&(
-        <div style={{background:'#E8F5E9',borderBottom:`2px solid #81C784`,padding:'6px 16px',textAlign:'center',fontSize:'0.78rem',color:C.green,fontWeight:600}}>
+        <div style={{background:C.green+'20',borderBottom:`1px solid ${C.green}50`,padding:'6px 16px',textAlign:'center',fontSize:'0.78rem',color:C.accent,fontWeight:600}}>
           🔴 LIVE — Auto-refreshes every 20s
         </div>
       )}
 
       {/* My Scorecard — quick access for remembered player */}
       {myName&&isLive&&round?.scores&&Object.keys(round.scores).includes(myName)&&!scoringPlayer&&(
-        <div style={{background:'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',padding:'12px 16px',display:'flex',justifyContent:'center',alignItems:'center',gap:12,cursor:'pointer',boxShadow:'0 2px 8px rgba(27,94,32,0.3)'}}
+        <div style={{background:`linear-gradient(135deg, ${C.green} 0%, ${C.accent} 100%)`,padding:'12px 16px',display:'flex',justifyContent:'center',alignItems:'center',gap:12,cursor:'pointer'}}
           onClick={()=>openScoring(myName)}>
-          <span style={{color:'#fff',fontSize:'1.1rem',fontWeight:700}}>⛳ Open My Scorecard — {myName}</span>
+          <span style={{color:'#fff',fontSize:'1.1rem',fontWeight:700}}>⛳ My Scorecard — {myName}</span>
           <span style={{background:'rgba(255,255,255,0.2)',color:'#fff',borderRadius:8,padding:'4px 12px',fontSize:'0.85rem',fontWeight:700}}>
             {(round.scores[myName]||[]).filter(s=>s>0).length}/18
           </span>
@@ -824,15 +824,15 @@ export default function App() {
 
       {/* Admin PW modal */}
       {showPwBox&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(4px)'}}>
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(4px)'}}>
           <Card style={{padding:32,minWidth:300,borderRadius:20}}>
             <div style={{textAlign:'center',marginBottom:16}}>
               <div style={{fontSize:'2rem',marginBottom:8}}>🔒</div>
-              <div style={{color:C.green,fontWeight:700,fontSize:'1.1rem'}}>Admin Access</div>
+              <div style={{color:C.goldL,fontWeight:700,fontSize:'1.1rem'}}>Admin Access</div>
             </div>
             <input type="password" onChange={e=>{adminPwRef.current=e.target.value;}} placeholder="Enter password"
               onKeyDown={e=>{if(e.key==='Enter'){if(adminPwRef.current===ADMIN_PW){setAdmin(true);setShowPwBox(false);adminPwRef.current='';}else setErr('Wrong password');}}}
-              style={{width:'100%',border:`2px solid #ddd`,borderRadius:10,padding:'12px 16px',fontSize:'1rem',marginBottom:14,textAlign:'center',fontWeight:600}}/>
+              style={{width:'100%',border:`2px solid ${C.border}`,borderRadius:10,padding:'12px 16px',fontSize:'1rem',marginBottom:14,textAlign:'center',fontWeight:600,background:C.card2,color:C.text}}/>
             <div style={{display:'flex',gap:8}}>
               <Btn onClick={()=>{if(adminPwRef.current===ADMIN_PW){setAdmin(true);setShowPwBox(false);adminPwRef.current='';}else setErr('Wrong password');}}>Unlock</Btn>
               <Btn outline onClick={()=>{setShowPwBox(false);adminPwRef.current='';}}>Cancel</Btn>
@@ -843,31 +843,31 @@ export default function App() {
 
       {/* Scoring Modal — Number Pad */}
       {scoringPlayer&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:90,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
-          <div style={{background:'#fff',borderRadius:'20px 20px 0 0',width:'100%',maxWidth:480,padding:'16px 16px 24px',maxHeight:'95vh',overflowY:'auto'}}>
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:90,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+          <div style={{background:C.card,borderRadius:'20px 20px 0 0',width:'100%',maxWidth:480,padding:'16px 16px 24px',maxHeight:'95vh',overflowY:'auto',border:`1px solid ${C.border}`}}>
             {/* Header */}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
               <div>
                 <div style={{fontWeight:800,fontSize:'1.2rem',color:C.green}}>{scoringPlayer}</div>
                 <div style={{color:C.muted,fontSize:'0.85rem',fontWeight:500}}>HC {hcMap[scoringPlayer]??'?'} · Gross {sumArr(tempScores.filter(s=>s>0))} · {tempScores.filter(s=>s>0).length}/18</div>
               </div>
-              <button onClick={closeScoring} style={{background:'#eee',border:'none',borderRadius:'50%',width:40,height:40,fontSize:'1.2rem',cursor:'pointer',color:'#333',fontWeight:700}}>✕</button>
+              <button onClick={closeScoring} style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:'50%',width:40,height:40,fontSize:'1.2rem',cursor:'pointer',color:C.text,fontWeight:700}}>✕</button>
             </div>
 
             {/* Current hole display */}
-            <div style={{background:tempScores[scoringHole]>0?scoreBg(tempScores[scoringHole],par[scoringHole]):'#f5f5f5',borderRadius:14,padding:'14px 16px',marginBottom:14,border:`2px solid ${tempScores[scoringHole]>0?scoreColor(tempScores[scoringHole],par[scoringHole]):'#ddd'}`}}>
+            <div style={{background:tempScores[scoringHole]>0?scoreBg(tempScores[scoringHole],par[scoringHole]):C.card2,borderRadius:14,padding:'14px 16px',marginBottom:14,border:`2px solid ${tempScores[scoringHole]>0?scoreColor(tempScores[scoringHole],par[scoringHole]):C.border}`}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                 <button onClick={()=>setScoringHole(h=>Math.max(0,h-1))} disabled={scoringHole===0}
-                  style={{background:scoringHole===0?'#eee':C.green,color:scoringHole===0?'#aaa':'#fff',border:'none',borderRadius:8,padding:'10px 16px',fontSize:'1rem',fontWeight:700,cursor:scoringHole===0?'default':'pointer'}}>◀</button>
+                  style={{background:scoringHole===0?C.card2:C.green,color:scoringHole===0?C.muted:'#fff',border:`1px solid ${scoringHole===0?C.border:C.green}`,borderRadius:8,padding:'10px 16px',fontSize:'1rem',fontWeight:700,cursor:scoringHole===0?'default':'pointer'}}>◀</button>
                 <div style={{textAlign:'center'}}>
                   <div style={{fontSize:'0.85rem',fontWeight:700,color:C.muted,letterSpacing:'0.1em'}}>HOLE {scoringHole+1}</div>
                   <div style={{fontSize:'0.8rem',color:C.muted}}>PAR {par[scoringHole]}</div>
                 </div>
                 <button onClick={()=>setScoringHole(h=>Math.min(17,h+1))} disabled={scoringHole===17}
-                  style={{background:scoringHole===17?'#eee':C.green,color:scoringHole===17?'#aaa':'#fff',border:'none',borderRadius:8,padding:'10px 16px',fontSize:'1rem',fontWeight:700,cursor:scoringHole===17?'default':'pointer'}}>▶</button>
+                  style={{background:scoringHole===17?C.card2:C.green,color:scoringHole===17?C.muted:'#fff',border:`1px solid ${scoringHole===17?C.border:C.green}`,borderRadius:8,padding:'10px 16px',fontSize:'1rem',fontWeight:700,cursor:scoringHole===17?'default':'pointer'}}>▶</button>
               </div>
               <div style={{textAlign:'center'}}>
-                <div style={{fontSize:'3.5rem',fontWeight:900,fontFamily:"'DM Mono',monospace",color:tempScores[scoringHole]>0?scoreColor(tempScores[scoringHole],par[scoringHole]):'#bbb',lineHeight:1}}>
+                <div style={{fontSize:'3.5rem',fontWeight:900,fontFamily:"'DM Mono',monospace",color:tempScores[scoringHole]>0?scoreColor(tempScores[scoringHole],par[scoringHole]):C.muted,lineHeight:1}}>
                   {tempScores[scoringHole]>0?tempScores[scoringHole]:'—'}
                 </div>
                 {tempScores[scoringHole]>0&&(
@@ -885,11 +885,11 @@ export default function App() {
                 const isPar = n===par[scoringHole];
                 if(n===0) return (
                   <button key="clear" onClick={()=>saveHoleScore(scoringHole,0)}
-                    style={{gridColumn:'span 1',background:'#ffebee',color:C.red,border:`2px solid #ef9a9a`,borderRadius:10,padding:'14px 0',fontSize:'1.1rem',fontWeight:700,cursor:'pointer'}}>CLR</button>
+                    style={{gridColumn:'span 1',background:C.red+'20',color:C.red,border:`2px solid ${C.red}50`,borderRadius:10,padding:'14px 0',fontSize:'1.1rem',fontWeight:700,cursor:'pointer'}}>CLR</button>
                 );
                 return (
                   <button key={n} onClick={()=>{saveHoleScore(scoringHole,n);if(scoringHole<17)setTimeout(()=>setScoringHole(h=>h+1),300);}}
-                    style={{background:isActive?C.green:isPar?'#E8F5E9':'#fff',color:isActive?'#fff':isPar?C.green:'#111',border:`2px solid ${isActive?C.green:isPar?'#81C784':'#ccc'}`,borderRadius:10,padding:'14px 0',fontSize:'1.3rem',fontWeight:800,cursor:'pointer',fontFamily:"'DM Mono',monospace",transition:'all .1s'}}>
+                    style={{background:isActive?C.green:isPar?C.green+'20':C.card2,color:isActive?'#fff':isPar?C.accent:C.text,border:`2px solid ${isActive?C.green:isPar?C.green+'50':C.border}`,borderRadius:10,padding:'14px 0',fontSize:'1.3rem',fontWeight:800,cursor:'pointer',fontFamily:"'DM Mono',monospace",transition:'all .1s'}}>
                     {n}
                   </button>
                 );
@@ -900,9 +900,9 @@ export default function App() {
             <div style={{display:'grid',gridTemplateColumns:'repeat(9,1fr)',gap:3,marginBottom:4}}>
               {Array(9).fill(0).map((_,i)=>(
                 <div key={i} onClick={()=>setScoringHole(i)}
-                  style={{textAlign:'center',cursor:'pointer',padding:'5px 2px',borderRadius:6,background:scoringHole===i?C.green:tempScores[i]>0?scoreBg(tempScores[i],par[i]):'#f5f5f5',border:`2px solid ${scoringHole===i?C.green:tempScores[i]>0?scoreColor(tempScores[i],par[i]):'#ddd'}`}}>
+                  style={{textAlign:'center',cursor:'pointer',padding:'5px 2px',borderRadius:6,background:scoringHole===i?C.green:tempScores[i]>0?scoreBg(tempScores[i],par[i]):C.card2,border:`2px solid ${scoringHole===i?C.green:tempScores[i]>0?scoreColor(tempScores[i],par[i]):C.border}`}}>
                   <div style={{fontSize:'0.6rem',color:scoringHole===i?'#fff':C.muted,fontWeight:600}}>{i+1}</div>
-                  <div style={{fontSize:'0.9rem',fontWeight:800,color:scoringHole===i?'#fff':tempScores[i]>0?scoreColor(tempScores[i],par[i]):'#bbb',fontFamily:"'DM Mono',monospace"}}>
+                  <div style={{fontSize:'0.9rem',fontWeight:800,color:scoringHole===i?'#fff':tempScores[i]>0?scoreColor(tempScores[i],par[i]):C.muted,fontFamily:"'DM Mono',monospace"}}>
                     {tempScores[i]>0?tempScores[i]:'·'}
                   </div>
                 </div>
@@ -912,9 +912,9 @@ export default function App() {
             <div style={{display:'grid',gridTemplateColumns:'repeat(9,1fr)',gap:3,marginBottom:14}}>
               {Array(9).fill(0).map((_,i)=>(
                 <div key={i+9} onClick={()=>setScoringHole(i+9)}
-                  style={{textAlign:'center',cursor:'pointer',padding:'5px 2px',borderRadius:6,background:scoringHole===i+9?C.green:tempScores[i+9]>0?scoreBg(tempScores[i+9],par[i+9]):'#f5f5f5',border:`2px solid ${scoringHole===i+9?C.green:tempScores[i+9]>0?scoreColor(tempScores[i+9],par[i+9]):'#ddd'}`}}>
+                  style={{textAlign:'center',cursor:'pointer',padding:'5px 2px',borderRadius:6,background:scoringHole===i+9?C.green:tempScores[i+9]>0?scoreBg(tempScores[i+9],par[i+9]):C.card2,border:`2px solid ${scoringHole===i+9?C.green:tempScores[i+9]>0?scoreColor(tempScores[i+9],par[i+9]):C.border}`}}>
                   <div style={{fontSize:'0.6rem',color:scoringHole===i+9?'#fff':C.muted,fontWeight:600}}>{i+10}</div>
-                  <div style={{fontSize:'0.9rem',fontWeight:800,color:scoringHole===i+9?'#fff':tempScores[i+9]>0?scoreColor(tempScores[i+9],par[i+9]):'#bbb',fontFamily:"'DM Mono',monospace"}}>
+                  <div style={{fontSize:'0.9rem',fontWeight:800,color:scoringHole===i+9?'#fff':tempScores[i+9]>0?scoreColor(tempScores[i+9],par[i+9]):C.muted,fontFamily:"'DM Mono',monospace"}}>
                     {tempScores[i+9]>0?tempScores[i+9]:'·'}
                   </div>
                 </div>
@@ -927,44 +927,47 @@ export default function App() {
       )}
 
       {/* ── HEADER ── */}
-      <header style={{background:C.green,position:'sticky',top:0,zIndex:50,boxShadow:'0 4px 12px rgba(0,0,0,0.15)'}}>
+      <header style={{background:C.card,borderBottom:`1px solid ${C.border}`,position:'sticky',top:0,zIndex:50}}>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'0 12px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'10px 0'}}>
             <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
               <Logo size={38}/>
               <div>
-                <div style={{fontFamily:"'Playfair Display',serif",color:'#fff',fontSize:'1.1rem',lineHeight:1.2,fontWeight:700}}>Sunday Skins</div>
-                <div style={{color:'rgba(255,255,255,0.75)',fontSize:'0.75rem',marginTop:1,fontWeight:500}}>
+                <div style={{fontFamily:"'Playfair Display',serif",color:C.goldL,fontSize:'1.1rem',lineHeight:1.2,fontWeight:700}}>Sunday Skins</div>
+                <div style={{color:C.muted,fontSize:'0.75rem',marginTop:1,fontWeight:500}}>
                   {round?.course?.name} · {round?.date}
-                  {round?.status==='locked'&&<span style={{marginLeft:6,fontWeight:700}}>🔒</span>}
-                  {round?.status==='live'&&<span style={{marginLeft:6,fontWeight:700}}>🟢 LIVE</span>}
+                  {round?.status==='locked'&&<span style={{color:C.red,marginLeft:6,fontWeight:700}}>🔒</span>}
+                  {round?.status==='live'&&<span style={{color:C.accent,marginLeft:6,fontWeight:700}}>🟢 LIVE</span>}
                 </div>
               </div>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:6}}>
               <select value={selRound??''} onChange={e=>setSelRound(Number(e.target.value))}
-                style={{background:'rgba(255,255,255,0.15)',color:'#fff',border:`2px solid rgba(255,255,255,0.3)`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',fontWeight:600,maxWidth:140}}>
-                {rounds.map(r=><option key={r.id} value={r.id} style={{color:'#111',background:'#fff'}}>{r.date}</option>)}
+                style={{background:C.card2,color:C.text,border:`1px solid ${C.border}`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',fontWeight:600,maxWidth:140}}>
+                {rounds.map(r=><option key={r.id} value={r.id}>{r.date}</option>)}
               </select>
               <button onClick={()=>adminMode?setAdmin(false):setShowPwBox(true)} style={{
-                background:adminMode?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.1)',color:'#fff',
-                border:`2px solid rgba(255,255,255,0.3)`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',cursor:'pointer',fontWeight:700,
+                background:adminMode?C.green+'30':C.card2,color:adminMode?C.accent:C.muted,
+                border:`1px solid ${adminMode?C.green:C.border}`,borderRadius:8,padding:'6px 10px',fontSize:'0.8rem',cursor:'pointer',fontWeight:700,
               }}>{adminMode?'🔓':'🔒'}</button>
             </div>
           </div>
-          {/* Nav tabs */}
-          <div style={{display:'flex',alignItems:'center',gap:5,overflowX:'auto',paddingBottom:10,WebkitOverflowScrolling:'touch'}}>
-            {nav.map(n=>(
-              <button key={n.key} onClick={()=>setView(n.key)} style={{
-                background:view===n.key?'#fff':'rgba(255,255,255,0.12)',color:view===n.key?C.green:'rgba(255,255,255,0.9)',
-                border:'none',borderRadius:8,
-                padding:'8px 14px',fontSize:'0.85rem',fontWeight:view===n.key?800:600,cursor:'pointer',
-                display:'flex',alignItems:'center',gap:4,whiteSpace:'nowrap',flexShrink:0,
-              }}><span>{n.icon}</span><span>{n.label}</span></button>
-            ))}
-          </div>
         </div>
       </header>
+
+      {/* ── BOTTOM NAV BAR — like a native app ── */}
+      <nav style={{position:'fixed',bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,zIndex:50,display:'flex',justifyContent:'center',padding:'6px 0',boxShadow:'0 -2px 12px rgba(0,0,0,0.3)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:2,maxWidth:600,width:'100%',justifyContent:'space-around',overflowX:'auto',padding:'0 8px'}}>
+          {nav.map(n=>(
+            <button key={n.key} onClick={()=>setView(n.key)} style={{
+              background:'transparent',color:view===n.key?C.goldL:C.muted,
+              border:'none',borderRadius:8,
+              padding:'4px 8px',fontSize:'0.65rem',fontWeight:view===n.key?700:500,cursor:'pointer',
+              display:'flex',flexDirection:'column',alignItems:'center',gap:2,minWidth:0,flexShrink:0,
+            }}><span style={{fontSize:'1.2rem'}}>{n.icon}</span><span>{n.label}</span></button>
+          ))}
+        </div>
+      </nav>
 
       <main style={{maxWidth:1060,margin:'0 auto',padding:'14px 10px'}}>
 
@@ -1023,13 +1026,13 @@ export default function App() {
                       const mbdPartner = mbdPair?.find(p=>p&&p!==name);
                       return (
                         <div key={name} onClick={()=>isLive&&openScoring(name)}
-                          style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:isMe?'#E8F5E9':C.card,borderRadius:8,cursor:isLive?'pointer':'default',border:`2px solid ${isMe?C.green:isLive&&holesPlayed===0?C.accent:C.border}`,transition:'all .1s'}}>
+                          style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:isMe?C.green+'20':C.card2,borderRadius:8,cursor:isLive?'pointer':'default',border:`2px solid ${isMe?C.green:isLive&&holesPlayed===0?C.accent:C.border}`,transition:'all .1s'}}>
                           <div style={{display:'flex',alignItems:'center',gap:10}}>
                             <FlightBadge f={flight}/>
                             <div>
-                              <div style={{fontWeight:700,fontSize:'1rem',display:'flex',alignItems:'center',gap:6,color:'#111'}}>
+                              <div style={{fontWeight:700,fontSize:'1rem',display:'flex',alignItems:'center',gap:6,color:C.text}}>
                                 {name}
-                                {isMe&&<span style={{fontSize:'0.7rem',color:C.green}}>⭐</span>}
+                                {isMe&&<span style={{fontSize:'0.7rem',color:C.goldL}}>⭐</span>}
                                 {seasonRankMap[name]&&(
                                   <span style={{
                                     background:seasonRankMap[name]===1?C.gold:seasonRankMap[name]<=3?'#b8860b':'#7a6a30',
@@ -1056,7 +1059,7 @@ export default function App() {
                               </div>
                             )}
                             {isLive&&(
-                              <div style={{background:holesPlayed===0?C.green:'#C8E6C9',color:holesPlayed===0?'#fff':C.green,borderRadius:8,padding:'8px 14px',fontSize:'0.9rem',fontWeight:700,whiteSpace:'nowrap',border:`2px solid ${holesPlayed===0?C.green:'#81C784'}`}}>
+                              <div style={{background:holesPlayed===0?C.green:C.green+'30',color:holesPlayed===0?'#fff':C.accent,borderRadius:8,padding:'8px 14px',fontSize:'0.9rem',fontWeight:700,whiteSpace:'nowrap',border:`2px solid ${C.green}`}}>
                                 {holesPlayed===0?'⛳ Start':'✏️ Edit'}
                               </div>
                             )}
