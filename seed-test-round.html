@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head><title>Sunday Skins — Seed Test Round</title></head>
+<body style="font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;">
+<h1>🌱 Seed Test Round — Northern Hills 3/29/2026</h1>
+<p>Click the button to insert the test round data from the spreadsheet into Supabase.</p>
+<button id="seedBtn" style="background:#1B5E20;color:#fff;border:none;padding:14px 28px;font-size:1.1rem;border-radius:8px;cursor:pointer;font-weight:700;">
+  Seed Test Round
+</button>
+<pre id="log" style="background:#f5f5f5;padding:16px;border-radius:8px;margin-top:20px;max-height:500px;overflow-y:auto;font-size:0.85rem;"></pre>
+
+<script>
+const SUPABASE_URL = 'https://cxnwtgytuapcmqzldfyp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4bnd0Z3l0dWFwY21xemxkZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4OTExOTQsImV4cCI6MjA4OTQ2NzE5NH0.w-bs6xIqsP1WER0zQq4UxZMJYuanCo8Sktdt0D4T5aU';
+
+const log = (msg) => { document.getElementById('log').textContent += msg + '\n'; };
+
+const sb = async (path, method='GET', body=null) => {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method,
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(JSON.stringify(data));
+  return data;
+};
+
+// Northern Hills — March 29, 2026 scores from spreadsheet
+const SCORES = {
+  'Gary S.':    [5,4,4,3,3,5,4,4,3,3,3,4,3,3,4,5,5,4],
+  'Hector M.':  [6,6,5,4,6,5,7,3,5,7,6,3,5,6,7,4,4,3],
+  'Tom H.':     [5,5,5,5,5,6,5,5,4,7,6,5,4,3,5,5,6,4],
+  'Ruben':      [5,5,4,4,5,5,5,4,5,5,4,5,5,3,5,5,7,4],
+  'Luis C.':    [10,5,4,4,4,7,5,5,4,6,4,5,6,3,4,5,6,5],
+  'James H.':   [6,6,6,4,6,6,5,5,4,6,4,7,5,5,5,5,5,3],
+  'Derrick K.': [9,6,4,4,5,7,8,5,4,8,6,7,5,4,7,5,5,4],
+  'Jerry':      [5,4,6,3,7,4,5,4,4,4,4,3,4,3,5,5,5,4],
+  'Pedro':      [7,4,4,6,4,6,5,5,3,7,5,6,6,5,6,4,5,5],
+  'Adrian':     [7,4,5,5,4,6,7,4,6,5,5,4,5,3,3,5,4,6],
+  'Martin':     [7,5,6,3,5,5,7,5,4,5,5,6,5,4,5,6,5,5],
+  'Jose AL.':   [7,6,5,6,5,6,7,4,5,6,4,4,5,4,5,7,5,5],
+  'Luis L.':    [7,4,5,4,6,6,5,6,4,5,5,6,5,3,6,4,6,5],
+  'Joe Ro.':    [6,6,5,4,5,6,5,5,4,5,4,6,6,4,6,6,7,5],
+  'Carlos F.':  [11,7,8,3,6,8,6,5,6,6,5,3,6,4,6,6,6,4],
+  'Endis':      [5,4,5,3,6,5,4,4,4,8,5,4,4,4,4,6,6,3],
+  'Kenny':      [5,6,5,3,4,5,6,7,5,6,4,5,4,3,6,5,6,5],
+  'Efren S.':   [7,6,5,6,6,7,6,6,5,5,6,7,7,7,6,4,6,4],
+  'Saul F.':    [6,6,5,4,4,8,8,4,4,5,5,5,5,3,6,6,4,4],
+  'Mike D.':    [9,6,4,5,7,4,6,5,4,5,4,5,5,4,4,4,4,4],
+  'Johnny':     [8,7,5,4,6,8,6,4,4,5,4,4,7,4,6,7,7,5],
+  'Gary M.':    [5,5,5,4,4,5,6,7,7,5,4,6,7,5,6,5,5,2],
+  'Israel G.':  [5,5,4,4,4,5,5,4,3,3,3,4,4,2,5,5,4,3],
+  'Raul G.':    [5,5,4,6,6,6,6,4,4,11,3,4,6,8,9,7,5,4],
+  'Chuck':      [7,5,4,4,6,5,6,4,4,7,5,4,5,4,6,5,5,4],
+  'Joe Av.':    [5,5,4,3,5,5,5,5,4,5,6,5,5,5,5,5,5,3],
+  'Roger':      [5,5,4,4,6,6,5,4,6,5,6,7,5,6,6,4,5,4],
+  'Valentin F.':[10,6,5,4,6,5,7,5,4,7,4,5,6,5,5,5,5,5],
+  'Arnold':     [7,5,4,3,5,6,5,4,5,5,6,5,4,4,7,5,7,5],
+  'Ray G.':     [5,7,5,3,5,6,7,6,4,5,5,5,7,3,6,6,5,6],
+  'Jeff M.':    [5,3,4,3,3,5,4,4,4,4,4,3,5,3,5,5,4,2],
+  'Justin D.':  [6,6,5,4,4,6,6,5,3,6,4,6,4,4,6,4,5,3],
+  'Will S.':    [4,4,4,4,5,5,7,5,5,5,5,5,5,4,4,5,5,3],
+  'Tommy L.':   [5,5,6,4,4,7,5,6,3,5,4,5,5,3,5,5,5,3],
+};
+
+// Handicaps from the spreadsheet
+const HANDICAPS = {
+  'Jeff M.': -3, 'Gary S.': 3, 'Israel G.': 3, 'Justin D.': 6, 'Jerry': 6,
+  'Hector M.': 9, 'Will S.': 9, 'Saul F.': 10, 'Mike D.': 10, 'Adrian': 10,
+  'Pedro': 10, 'Endis': 11, 'Raul G.': 12, 'Martin': 13, 'Tom H.': 14,
+  'Kenny': 14, 'Ruben': 15, 'Tommy L.': 16, 'Efren S.': 18, 'Johnny': 18,
+  'Roger': 18, 'Luis C.': 18, 'Chuck': 18, 'Valentin F.': 19, 'Jose AL.': 19,
+  'Gary M.': 20, 'Joe Av.': 20, 'Luis L.': 21, 'Joe Ro.': 21, 'Arnold': 22,
+  'James H.': 23, 'Ray G.': 25, 'Carlos F.': 18, 'Derrick K.': 0,
+};
+
+// Foursomes from spreadsheet
+const FOURSOMES = [
+  ['Gary S.', 'Hector M.', 'Tom H.'],
+  ['Ruben', 'Luis C.', 'James H.', 'Derrick K.'],
+  ['Jerry', 'Pedro', 'Adrian', 'Martin'],
+  ['Jose AL.', 'Luis L.', 'Joe Ro.', 'Carlos F.'],
+  ['Endis', 'Kenny', 'Efren S.'],
+  ['Saul F.', 'Mike D.', 'Johnny', 'Gary M.'],
+  ['Israel G.', 'Raul G.', 'Chuck', 'Joe Av.'],
+  ['Roger', 'Valentin F.', 'Arnold', 'Ray G.'],
+  ['Jeff M.', 'Justin D.', 'Will S.', 'Tommy L.'],
+];
+
+// Flight assignments from spreadsheet
+const FLIGHT_A = ['Jeff M.','Gary S.','Israel G.','Justin D.','Jerry','Hector M.','Will S.','Saul F.','Mike D.','Adrian','Pedro'];
+const FLIGHT_B = ['Endis','Raul G.','Martin','Tom H.','Kenny','Ruben','Tommy L.','Efren S.','Johnny','Roger','Luis C.'];
+const FLIGHT_C = ['Chuck','Valentin F.','Jose AL.','Gary M.','Joe Av.','Luis L.','Joe Ro.','Arnold','James H.','Ray G.','Carlos F.'];
+
+// Skins A/B from spreadsheet
+const SKINS_A = ['Gary S.','Hector M.','Tom H.','Ruben','Jerry','Pedro','Adrian','Martin','Endis','Kenny','Saul F.','Mike D.','Israel G.','Raul G.','Jeff M.','Justin D.','Will S.'];
+const SKINS_B = ['Luis C.','James H.','Derrick K.','Jose AL.','Luis L.','Joe Ro.','Carlos F.','Efren S.','Johnny','Gary M.','Chuck','Joe Av.','Roger','Valentin F.','Arnold','Ray G.','Tommy L.'];
+
+document.getElementById('seedBtn').onclick = async () => {
+  document.getElementById('seedBtn').disabled = true;
+  document.getElementById('seedBtn').textContent = 'Seeding...';
+  try {
+    // 1. Check if Northern Hills course exists
+    log('Checking courses...');
+    const courses = await sb('courses?name=eq.Northern%20Hills');
+    let courseId;
+    if (courses && courses.length > 0) {
+      courseId = courses[0].id;
+      log('Found Northern Hills course: id=' + courseId);
+    } else {
+      log('Creating Northern Hills course...');
+      const [c] = await sb('courses', 'POST', {
+        name: 'Northern Hills',
+        course_rating: 70.1,
+        slope: 121,
+        holes_par: [5,4,4,3,4,5,4,4,3,5,4,4,4,3,4,4,5,3],
+      });
+      courseId = c.id;
+      log('Created course: id=' + courseId);
+    }
+
+    // 2. Ensure all players exist
+    log('Checking players...');
+    const existingPlayers = await sb('players?order=name');
+    const existingNames = new Set((existingPlayers||[]).map(p => p.name));
+    const allNames = Object.keys(SCORES);
+    const newPlayers = allNames.filter(n => !existingNames.has(n));
+    if (newPlayers.length > 0) {
+      log('Adding ' + newPlayers.length + ' new players...');
+      await sb('players', 'POST', newPlayers.map(n => ({ name: n, hc: HANDICAPS[n] || 0 })));
+    }
+    log('All ' + allNames.length + ' players ready.');
+
+    // 3. Create round
+    log('Creating round: March 29, 2026 at Northern Hills...');
+    const [round] = await sb('rounds', 'POST', {
+      date: 'March 29, 2026',
+      course_id: courseId,
+      status: 'locked',
+    });
+    const rid = round.id;
+    log('Round created: id=' + rid);
+
+    // 4. Insert scores
+    log('Inserting scores for ' + allNames.length + ' players...');
+    await sb('scores', 'POST', allNames.map(name => ({
+      round_id: rid,
+      player_name: name,
+      holes: SCORES[name],
+    })));
+    log('All scores inserted.');
+
+    // 5. Insert CTP (par 3 holes: 4, 9, 14, 18)
+    log('Setting up CTP...');
+    await sb('ctp', 'POST', [
+      { round_id: rid, hole_key: 'h4', player_name: 'Tommy L.', distance: "29'9\"" },
+      { round_id: rid, hole_key: 'h9', player_name: 'Pedro', distance: "5'8\"" },
+      { round_id: rid, hole_key: 'h14', player_name: '', distance: '' },
+      { round_id: rid, hole_key: 'h18', player_name: 'Jeff M.', distance: "9'5\"" },
+    ]);
+    log('CTP set.');
+
+    // 6. Insert round config
+    log('Setting round config (flights, skins, 2MBD)...');
+    await sb('round_config', 'POST', {
+      round_id: rid,
+      buy_in: 25,
+      super_skin_fee: 10,
+      pct_ctp: 12,
+      pct_low_net: 15,
+      pct_skins: 25,
+      pct_2mbd: 48,
+      num_flights: 3,
+      flight_a: FLIGHT_A,
+      flight_b: FLIGHT_B,
+      flight_c: FLIGHT_C,
+      skins_a: SKINS_A,
+      skins_b: SKINS_B,
+      mbd_a: SKINS_A,
+      mbd_b: SKINS_B,
+      super_skin_players: [...SKINS_A.filter(n=>n!=='Derrick K.'), ...SKINS_B.filter(n=>n!=='Chuck'&&n!=='Joe Av.'&&n!=='Ray G.')],
+      foursomes: FOURSOMES,
+    });
+    log('Config saved.');
+
+    log('\n✅ DONE! Refresh sunday-skins.vercel.app to see the test round.');
+    log('Round: March 29, 2026 — Northern Hills — 34 players — LOCKED');
+
+  } catch (e) {
+    log('❌ ERROR: ' + e.message);
+  }
+  document.getElementById('seedBtn').disabled = false;
+  document.getElementById('seedBtn').textContent = 'Seed Test Round';
+};
+</script>
+</body>
+</html>
